@@ -1,3 +1,4 @@
+/** @deprecated MARLIN V2 is a legacy engine kept for historical comparison. The active site uses V6. */
 const VALUE = { p: 100, n: 320, b: 335, r: 500, q: 900, k: 20000 };
 const MATE = 100000;
 const MAX_PLY = 128;
