@@ -1,0 +1,60 @@
+name: Publish trained MARLIN NNUE
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/publish-marlin-nnue.yml"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Download validated training artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -fL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/13749778588/zip" \
+            -o marlin-nnue-artifact.zip
+          unzip -o marlin-nnue-artifact.zip -d artifact
+          test -s artifact/nnue/marlin-v4.nnue.json
+          mkdir -p nnue
+          cp artifact/nnue/marlin-v4.nnue.json nnue/marlin-v4.nnue.json
+      - name: Validate model before publishing
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("nnue/marlin-v4.nnue.json")
+          d = json.loads(p.read_text())
+          assert d["format"] == "MARLIN_NNUE_V1"
+          assert d["architecture"] == "768x128x32x1"
+          assert d["feature_encoding"] == "stm-relative-piece-square-v1"
+          assert d["training"]["positions"] == 3809
+          assert d["training"]["epochs"] == 15
+          w = d["weights"]
+          assert len(w["fc1_w"]) == 768 and all(len(x) == 128 for x in w["fc1_w"])
+          assert len(w["fc2_w"]) == 128 and all(len(x) == 32 for x in w["fc2_w"])
+          assert len(w["out_w"]) == 32
+          print(f"Validated trained MARLIN NNUE: {p.stat().st_size:,} bytes")
+          print("Training:", d["training"])
+          PY
+      - name: Commit model for GitHub Pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nnue/marlin-v4.nnue.json
+          if git diff --cached --quiet; then
+            echo "Model already published."
+          else
+            git commit -m "Publish trained MARLIN V5 NNUE model"
+            git push
+          fi
