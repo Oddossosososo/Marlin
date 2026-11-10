@@ -16,7 +16,7 @@
       <button class="side-link" id="arena-nav">⚔ <span>Arena</span></button>
       <div class="side-foot"><img class="sidebar-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN</span><small>ENGINE LAB</small></div>
     </nav>
-    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.5 · MARLIN V4 NNUE</span></header>
+    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.6 · MARLIN V5 SEARCH</span></header>
     <section class="layout">
       <div class="board-wrap">
         <div class="board" id="board" role="grid" aria-label="Chess board"></div>
@@ -37,9 +37,9 @@
     </section>
     <section class="arena-panel" id="arena-panel" hidden>
       <div class="arena-board-slot" id="arena-board-slot"></div>
-      <div class="arena-heading"><div class="arena-brand"><img class="section-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><div class="section-title">ENGINE BATTLE</div><h2>V4 vs V3</h2><p class="pgn-help">Compare the new V4 engine against V3 in self-play.</p></div></div><span class="arena-live" id="arena-live">READY</span></div>
+      <div class="arena-heading"><div class="arena-brand"><img class="section-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><div class="section-title">ENGINE BATTLE</div><h2>V5 vs V3</h2><p class="pgn-help">Compare MARLIN V5 against the V3 baseline. Successive matches alternate colours.</p></div></div><span class="arena-live" id="arena-live">READY</span></div>
       <div class="arena-contenders">
-        <div class="contender newer"><small>WHITE · NEW</small><strong>Marlin V4</strong><span>V4 · Zobrist / TT / PVS / LMR / NNUE</span></div>
+        <div class="contender newer"><small>WHITE · NEW</small><strong>Marlin V5</strong><span>V5 · Aspiration / Countermoves / Zobrist / TT / PVS / LMR</span></div>
         <div class="versus">VS</div>
         <div class="contender older"><small>BLACK · BASELINE</small><strong>Marlin V3</strong><span>V3 · Zobrist / TT / Alpha-beta / PVS / LMR / Null pruning</span></div>
       </div>
@@ -55,7 +55,7 @@
       </div>
       <div class="arena-progress"><span id="arena-progress">No match played yet.</span><span id="arena-ply">0 plies</span></div>
       <div class="arena-results">
-        <div><small>V4 WINS</small><strong id="v4-wins">0</strong></div>
+        <div><small>V5 WINS</small><strong id="v5-wins">0</strong></div>
         <div><small>DRAWS</small><strong id="arena-draws">0</strong></div>
         <div><small>V3 WINS</small><strong id="v3-wins">0</strong></div>
       </div>
