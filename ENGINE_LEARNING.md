@@ -2,7 +2,7 @@
 
 This document records search ideas for Marlin's independent implementation. It is a learning guide, not copied Stockfish or Reckless source code.
 
-## Already in Marlin V2
+## Legacy implementation notes (V2 — deprecated)
 
 - **Alpha-beta pruning:** narrows the search window and cuts branches that cannot improve the current result.
 - **Negamax:** uses the side-to-move score convention to simplify minimax.
@@ -51,6 +51,6 @@ Treat these as architecture lessons. Reimplement ideas from first principles and
 
 - Run perft positions to check move generation.
 - Compare null pruning on/off over the same tactical and zugzwang test positions.
-- Run many paired V1/V2 games with colors swapped.
-- Save every Arena game as PGN and inspect blunders.
+- Run many paired V5/V6 games with colors swapped and identical node budgets.
+- Give each engine the same five-million-node cap per move, save every Arena game as PGN, and inspect blunders.
 - Use fixed depth or fixed time and report the sample size; one game is not an Elo rating.
