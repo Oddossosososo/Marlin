@@ -5,7 +5,7 @@ MARLIN is an experimental browser chess engine and training project.
 ## Current engine: V7
 
 - V7 is the default engine for Play and PGN next-move analysis.
-- Iterative deepening, alpha-beta / negamax, transposition table, PVS, LMR and null-move pruning. Search stops at the selected depth; there is no fixed node-count cutoff. Depth 6 is the default in Play, Arena and PGN analysis. Arena reads the selected depth control and sends that same depth to both V7 and V6. Actual nodes are reported for diagnostics. V7's search hot path avoids temporary board allocation during Zobrist hashing and reuses previous-move context rather than rebuilding move history at every node.
+- Iterative deepening, alpha-beta / negamax, transposition table, PVS, LMR and null-move pruning. Search stops at the selected depth; there is no fixed node-count cutoff. Depth 6 is the default in Play, Arena and PGN analysis. Arena reads the selected depth control and sends that same depth to both V7 and V6. Actual nodes, elapsed time and nodes per second (NPS) are reported. V7 uses numeric 53-bit Zobrist keys instead of BigInt, scores each move once before sorting, keeps a bounded transposition table and move-ordering history warm across turns, and reuses the previous root move as a principal-variation hint. V6's Arena search also reuses previous-move context instead of rebuilding the full game history at every node.
 - A dedicated handcrafted evaluation adds king safety, pawn structure, piece activity and mobility, bishop-pair value, rook files and endgame king activity. Structural weaknesses are evaluated as soft penalties; tactics can justify them.
 - Captures use standard chess material values. V7's handcrafted fallback explicitly scores the white-minus-black material balance, alongside positional terms. Static-exchange evaluation is used for capture ordering and quiescence pruning; it does not punish the capturing piece simply for taking.
 - The opening policy consults Lichess's master-game opening explorer, enforces the selected first-move repertoire, and falls back to the local curated lines when the service is unavailable.
@@ -22,7 +22,7 @@ Place authorised PGNs in `training/gm-games/` or pass an HTTPS PGN / PGN.zst URL
 
 ## Arena
 
-Arena compares MARLIN V7 against V6 with alternating colours. Both search to the selected depth without a fixed node-count cutoff, and the interface reports actual nodes searched. Opening-book and tablebase moves can bypass normal search. Save and inspect many games before drawing strength conclusions.
+Arena compares MARLIN V7 against V6 with alternating colours. Both search to the selected depth without a fixed node-count cutoff in Arena. The interface reports completed depth, elapsed time, actual nodes and NPS while each engine is thinking. Opening-book and tablebase moves can bypass normal search. Save and inspect many games before drawing strength conclusions.
 
 ## Legacy versions
 
