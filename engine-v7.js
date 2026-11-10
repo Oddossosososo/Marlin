@@ -219,15 +219,15 @@ export async function initialiseV7() {
 }
 export { hasNnueWeights };
 
-function isAutomaticDraw(game, halfmoveClock = null) {
-  // isDraw() calls isStalemate(), which would generate the legal moves twice.
-  // A position cannot have occurred three times until at least eight reversible
-  // plies have elapsed, so skip repetition-history work before that point.
-  if (game.isDrawByFiftyMoves() || game.isInsufficientMaterial()) return true;
-  const reversiblePlies = halfmoveClock === null
-    ? Number(game.fen().split(" ")[4]) || 0
-    : halfmoveClock;
-  return reversiblePlies >= 8 && game.isThreefoldRepetition();
+function isRepeatedPosition(game, halfmoveClock) {
+  // Three occurrences require at least eight reversible plies. Avoid the
+  // repetition-history scan during the opening and early middlegame.
+  return halfmoveClock >= 8 && game.isThreefoldRepetition();
+}
+
+function isAutomaticDraw(game) {
+  // Called after the legal-move check, so this never generates moves itself.
+  return game.isDrawByFiftyMoves() || game.isInsufficientMaterial();
 }
 
 function scoreFromTT(score, ply) {
@@ -389,7 +389,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
   const fen = game.fen();
   const fenFields = fen.split(" ");
   const halfmoveClock = Number(fenFields[4]) || 0;
-  const drawCandidate = isAutomaticDraw(game, halfmoveClock);
+  const repetitionDraw = isRepeatedPosition(game, halfmoveClock);
   const key = zobristHashFen(fen);
   const ttSlot = ttIndex(key);
   const ttHit = TT_VALID[ttSlot] && TT_KEYS[ttSlot] === key;
@@ -397,7 +397,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
 
   // Most transposition hits can now return before chess.js builds a full
   // verbose legal-move list. Draw candidates still verify mate/stalemate first.
-  if (!drawCandidate && ttHit && TT_DEPTH[ttSlot] >= depth) {
+  if (!repetitionDraw && ttHit && TT_DEPTH[ttSlot] >= depth) {
     const ttScore = scoreFromTT(TT_SCORE[ttSlot], ply);
     const ttFlag = TT_FLAG[ttSlot];
     if (ttFlag === 1) return ttScore;
@@ -409,7 +409,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
   const legalMoves = game.moves({ verbose: true });
   // Check mate/stalemate before declaring a 50-move or repetition draw.
   if (legalMoves.length === 0) return inCheck ? -MATE + ply : 0;
-  if (drawCandidate) return 0;
+  if (repetitionDraw || isAutomaticDraw(game)) return 0;
 
   const counterKey = previousMove && isQuiet(previousMove) ? quietKey(previousMove) : null;
   const counterMove = counterKey ? counterMoves[counterKey] : null;
