@@ -193,6 +193,10 @@ document.querySelector("#download-pgn").addEventListener("click", () => {
 });
 
 
+let arenaWorker = null;
+let arenaRequestId = 0;
+let arenaAutoStarted = false;
+
 function setSection(section) {
   const showArena = section === "arena";
   arenaPanel.hidden = !showArena;
@@ -200,6 +204,10 @@ function setSection(section) {
   document.querySelector(".pgn-panel").hidden = showArena;
   playNav.classList.toggle("active", !showArena);
   arenaNav.classList.toggle("active", showArena);
+  if (showArena && !arenaAutoStarted && !arenaRunning) {
+    arenaAutoStarted = true;
+    startArenaMatch();
+  }
 }
 playNav.addEventListener("click", () => setSection("play"));
 arenaNav.addEventListener("click", () => setSection("arena"));
@@ -211,7 +219,39 @@ function updateArenaStats() {
 }
 function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-document.querySelector("#arena-start").addEventListener("click", async () => {
+function stopArenaWorker() {
+  if (arenaWorker) {
+    arenaWorker.terminate();
+    arenaWorker = null;
+  }
+}
+
+function getArenaMove(version, depth) {
+  return new Promise((resolve, reject) => {
+    stopArenaWorker();
+    const requestId = ++arenaRequestId;
+    const worker = new Worker("./arena-worker.js", { type: "module" });
+    arenaWorker = worker;
+    worker.onmessage = (event) => {
+      if (event.data.requestId !== requestId) return;
+      stopArenaWorker();
+      if (event.data.error) reject(new Error(event.data.error));
+      else resolve(event.data.move);
+    };
+    worker.onerror = (event) => {
+      stopArenaWorker();
+      reject(new Error(event.message || "Arena worker failed to load"));
+    };
+    worker.postMessage({
+      requestId,
+      pgn: game.pgn({ maxWidth: 1000 }),
+      depth,
+      version
+    });
+  });
+}
+
+async function startArenaMatch() {
   if (arenaRunning) return;
   arenaRunning = true;
   arenaStopRequested = false;
@@ -224,11 +264,13 @@ document.querySelector("#arena-start").addEventListener("click", async () => {
   startButton.disabled = true;
   document.querySelector("#arena-live").textContent = "LIVE";
   document.querySelector("#arena-progress").textContent = "V2 (White) vs V1 (Black) — match running";
+  document.querySelector("#arena-ply").textContent = "0 plies";
   render();
   try {
     while (!game.isGameOver() && !arenaStopRequested && game.history().length < 240) {
       const v2Turn = game.turn() === "w";
-      const move = v2Turn ? findBestMove(game, depth) : findV1Move(game, depth);
+      const move = await getArenaMove(v2Turn ? "v2" : "v1", depth);
+      if (arenaStopRequested) break;
       if (!move) break;
       game.move(move);
       render();
@@ -257,13 +299,20 @@ document.querySelector("#arena-start").addEventListener("click", async () => {
     document.querySelector("#arena-live").textContent = "ERROR";
     document.querySelector("#arena-progress").textContent = "Match error: " + error.message;
   } finally {
+    stopArenaWorker();
     arenaRunning = false;
     startButton.disabled = false;
     render();
   }
+}
+
+document.querySelector("#arena-start").addEventListener("click", () => {
+  arenaAutoStarted = true;
+  startArenaMatch();
 });
 document.querySelector("#arena-stop").addEventListener("click", () => {
   arenaStopRequested = true;
+  stopArenaWorker();
   document.querySelector("#arena-live").textContent = "STOPPING";
 });
 
