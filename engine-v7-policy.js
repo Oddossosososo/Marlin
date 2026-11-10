@@ -140,7 +140,7 @@ async function fetchMasterBookMove(game, timeoutMs = 1100) {
   };
 }
 
-export async function findBestMove(game, maxDepth = 5, options = {}) {
+export async function findBestMove(game, maxDepth = 6, options = {}) {
   const tablebaseMove = await probeSyzygy(game);
   if (tablebaseMove) return tablebaseMove;
 
