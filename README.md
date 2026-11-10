@@ -89,3 +89,8 @@ The repository contains the trainer, but trained weights are not checked in unti
 Until the exported file exists, V4 explicitly falls back to the V3 handcrafted evaluator while keeping the V4 search active. Once the file is deployed, the NNUE loader activates it automatically.
 
 The trainer's network is MARLIN's own model. Stockfish supplies evaluation labels only; Stockfish network weights are not copied.
+
+
+## MARLIN V5
+
+V5 adds aspiration-window iterative deepening and a countermove heuristic on top of the V4 search/evaluation foundation. The Arena compares V5 against the V3 baseline and alternates colours on successive matches to reduce first-move bias. NNUE remains optional and is only active when trained weights are supplied; otherwise V5 uses the existing classical evaluation. Arena results are local self-play observations, not an Elo rating.
