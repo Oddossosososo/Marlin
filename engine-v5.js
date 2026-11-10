@@ -123,6 +123,10 @@ function evaluateClassical(game) {
       const isolated = !pawns[piece.color].some(p => p.c === c - 1 || p.c === c + 1);
       if (isolated) positional -= 12;
       if (passed(piece.color, { r, c })) positional += (endgame ? 18 : 10) + Math.max(0, advance) * 7;
+      const connected = pawns[piece.color].some(p =>
+        p.c !== c && Math.abs(p.c - c) === 1 && Math.abs(p.r - r) <= 1
+      );
+      if (connected) positional += 8;
     } else if (type === "n") {
       positional = center * 11;
       if (r === 0 || r === 7 || c === 0 || c === 7) positional -= 12;
@@ -134,10 +138,24 @@ function evaluateClassical(game) {
     else if (type === "k") {
       positional = endgame ? center * 9 : -center * 7;
       if (!endgame) {
+        const enemy = piece.color === "w" ? "b" : "w";
         const shieldRow = piece.color === "w" ? r - 1 : r + 1;
         if (shieldRow >= 0 && shieldRow < 8) {
           for (let fc = Math.max(0, c - 1); fc <= Math.min(7, c + 1); fc++) {
             if (board[shieldRow][fc]?.type === "p" && board[shieldRow][fc].color === piece.color) positional += 11;
+          }
+        }
+        // Penalise open files beside the king and nearby enemy heavy pieces.
+        for (let fc = Math.max(0, c - 1); fc <= Math.min(7, c + 1); fc++) {
+          if (files[piece.color][fc] === 0) positional -= files[enemy][fc] === 0 ? 8 : 3;
+        }
+        for (let er = 0; er < 8; er++) for (let ec = 0; ec < 8; ec++) {
+          const attacker = board[er][ec];
+          if (!attacker || attacker.color !== enemy || !["q", "r", "b", "n"].includes(attacker.type)) continue;
+          const distance = Math.abs(er - r) + Math.abs(ec - c);
+          if (distance <= 3) {
+            const pressure = attacker.type === "q" ? 8 : attacker.type === "r" ? 6 : 4;
+            positional -= pressure * (4 - distance);
           }
         }
       }
