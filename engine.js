@@ -165,7 +165,28 @@ function quiescence(game, alpha, beta, ply, remaining = 5) {
   return alpha;
 }
 
-function negamax(game, depth, alpha, beta, ply) {
+function makeNullPosition(game) {
+  // A null move passes the turn without moving a piece. En-passant rights
+  // expire, while castling rights and the half-move clock are preserved.
+  const fields = game.fen().split(" ");
+  fields[1] = fields[1] === "w" ? "b" : "w";
+  fields[3] = "-";
+  return new game.constructor(fields.join(" "));
+}
+
+function sideHasNullMoveMaterial(game) {
+  const board = game.board();
+  const side = game.turn();
+  let material = 0;
+  for (const row of board) for (const piece of row) {
+    if (piece && piece.color === side && piece.type !== "p" && piece.type !== "k") {
+      material += VALUE[piece.type];
+    }
+  }
+  return material >= VALUE.r;
+}
+
+function negamax(game, depth, alpha, beta, ply, allowNull = true) {
   const terminal = terminalScore(game, ply);
   if (terminal !== null) return terminal;
   if (depth <= 0) return quiescence(game, alpha, beta, ply);
@@ -183,6 +204,24 @@ function negamax(game, depth, alpha, beta, ply) {
   }
 
   const inCheck = game.isCheck();
+  // Null-move pruning: if passing the turn still scores above beta,
+  // the real position is very likely good enough to cause a beta cutoff.
+  // Disable consecutive nulls and avoid likely zugzwang positions.
+  if (allowNull && depth >= 3 && !inCheck && beta < MATE - MAX_PLY &&
+      sideHasNullMoveMaterial(game)) {
+    const reduction = 2 + Math.floor(depth / 4);
+    const nullPosition = makeNullPosition(game);
+    const nullScore = -negamax(
+      nullPosition,
+      depth - 1 - reduction,
+      -beta,
+      -beta + 1,
+      ply + 1,
+      false
+    );
+    if (nullScore >= beta) return beta;
+  }
+
   const moves = ordered(game.moves({ verbose: true }), ttMove, ply);
   if (!moves.length) return inCheck ? -MATE + ply : 0;
 
