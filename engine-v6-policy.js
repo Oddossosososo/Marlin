@@ -4,7 +4,7 @@ import { probeSyzygy } from "./syzygy-v6.js";
 
 export { initialiseV6 };
 
-export async function findBestMove(game, maxDepth = 5) {
+export async function findBestMove(game, maxDepth = 5, options = {}) {
   const tablebaseMove = await probeSyzygy(game);
   if (tablebaseMove) return tablebaseMove;
 
@@ -18,5 +18,5 @@ export async function findBestMove(game, maxDepth = 5) {
       source: "opening-book"
     };
   }
-  return findSearchMove(game, maxDepth);
+  return findSearchMove(game, maxDepth, options);
 }
