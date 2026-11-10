@@ -142,7 +142,9 @@ export { hasNnueWeights };
 
 function terminalScore(game, ply) {
   if (game.isCheckmate()) return -MATE + ply;
-  if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition()) return 0;
+  // chess.js isDraw() already covers stalemate, repetition, insufficient
+  // material and move-count draw rules, so avoid running them twice.
+  if (game.isDraw()) return 0;
   return null;
 }
 
@@ -395,8 +397,12 @@ export function findBestMove(game, maxDepth = 6, options = {}) {
   if (!moves.length) return null;
 
   // Reuse the bounded transposition table and move-ordering heuristics across turns.
-
-  let bestMove = moves[0];
+  const rootKey = zobristHash(game);
+  const previousRootMove = table.get(rootKey)?.move;
+  const previousRootMoveKey = previousRootMove ? moveKey(previousRootMove) : null;
+  let bestMove = previousRootMoveKey
+    ? (moves.find(move => moveKey(move) === previousRootMoveKey) || moves[0])
+    : moves[0];
   let bestScore = -Infinity;
 
   for (let depth = 1; depth <= depthCeiling; depth++) {
@@ -454,6 +460,13 @@ export function findBestMove(game, maxDepth = 6, options = {}) {
     bestScore = iterationScore;
     reportSearchProgress({ stage: "depth-complete", completedDepth: depth });
   }
+
+  storeTT(rootKey, {
+    depth: depthCeiling,
+    score: scoreToTT(bestScore, 0),
+    flag: "exact",
+    move: { from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion }
+  });
 
   const elapsedMs = Math.max(1, Date.now() - searchStartedAt);
   const result = {
