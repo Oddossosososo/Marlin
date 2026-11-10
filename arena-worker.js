@@ -10,8 +10,19 @@ self.onmessage = async (event) => {
 
     const isV7 = version === "v7";
     const findMove = isV7 ? findV7Move : findV6Move;
+    const reportProgress = details => self.postMessage({
+      requestId,
+      type: "progress",
+      version,
+      ...details
+    });
+
+    reportProgress({ stage: "initialising", depth: 0, nodes: 0 });
     const initialised = isV7 ? await initialiseV7() : await initialiseV6();
-    const move = await findMove(game, depth);
+    reportProgress({ stage: "checking-book", depth: 0, nodes: 0 });
+    const move = await findMove(game, depth, {
+      onProgress: details => reportProgress(details)
+    });
 
     if (!move) {
       self.postMessage({ requestId, error: "The selected engine found no legal move." });
