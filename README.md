@@ -65,3 +65,27 @@ cargo test
 ```
 
 This is currently a native build experiment. The existing browser game still uses `engine.js`; browser/WASM integration will be a later step after the native bridge is tested.
+
+
+## MARLIN V4 (development branch)
+
+V4 is developed on `marlin-v4-nnue`, leaving `main`, V2 and V3 untouched.
+
+- Zobrist position hashing and bounded transposition table.
+- Iterative-deepening negamax with alpha-beta, PVS, LMR, null-move pruning, quiescence, killer/history move ordering.
+- NNUE inference module (`nnue-v4.js`) with a Stockfish-teacher-trained 768x128x32x1 network.
+- V4 is the player engine; the Arena runs V4 (White) against V3 (Black).
+
+### Train actual NNUE weights
+
+The repository contains the trainer, but trained weights are not checked in until generated. This avoids pretending random weights are a trained network.
+
+1. Install Python dependencies: `pip install python-chess numpy torch`.
+2. Collect Stockfish-labelled positions:
+   `python training/collect_stockfish.py --stockfish /path/to/stockfish --positions 30000 --depth 10`
+3. Train and export:
+   `python training/train_nnue.py --data training/data/stockfish.jsonl --out nnue/marlin-v4.nnue.json --epochs 20`
+
+Until the exported file exists, V4 explicitly falls back to the V3 handcrafted evaluator while keeping the V4 search active. Once the file is deployed, the NNUE loader activates it automatically.
+
+The trainer's network is MARLIN's own model. Stockfish supplies evaluation labels only; Stockfish network weights are not copied.
