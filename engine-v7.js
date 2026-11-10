@@ -28,9 +28,21 @@ const TT_LIMIT = 262144;
 const table = new Map();
 
 let searchNodes = 0;
+let activeSearchDepth = 0;
+let searchProgressCallback = null;
+
+function reportSearchProgress(details = {}) {
+  if (typeof searchProgressCallback !== "function") return;
+  try {
+    searchProgressCallback({ depth: activeSearchDepth, nodes: searchNodes, ...details });
+  } catch {
+    // UI progress reporting must never interrupt the chess search.
+  }
+}
 
 function countSearchNode() {
   searchNodes++;
+  if (searchNodes % 50000 === 0) reportSearchProgress({ stage: "searching" });
 }
 
 function zobristHash(game) {
@@ -356,8 +368,10 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
   return best;
 }
 
-export function findBestMove(game, maxDepth = 6) {
+export function findBestMove(game, maxDepth = 6, options = {}) {
   searchNodes = 0;
+  activeSearchDepth = 0;
+  searchProgressCallback = typeof options?.onProgress === "function" ? options.onProgress : null;
   // Iterative deepening ends at the selected search depth. Nodes are counted
   // for diagnostics only and never stop the search early.
   const depthCeiling = Math.max(1, Math.min(MAX_PLY - 2, Math.floor(Number(maxDepth) || 6)));
@@ -373,6 +387,8 @@ export function findBestMove(game, maxDepth = 6) {
   let bestScore = -Infinity;
 
   for (let depth = 1; depth <= depthCeiling; depth++) {
+    activeSearchDepth = depth;
+    reportSearchProgress({ stage: "searching", iterationStart: true });
     let window = depth >= 3 ? 35 : Infinity;
     let alpha = window === Infinity ? -Infinity : bestScore - window;
     let beta = window === Infinity ? Infinity : bestScore + window;
@@ -424,7 +440,11 @@ export function findBestMove(game, maxDepth = 6) {
 
     bestMove = iterationMove;
     bestScore = iterationScore;
+    reportSearchProgress({ stage: "depth-complete", completedDepth: depth });
   }
 
-  return { from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion || "q", score: bestScore, nodes: searchNodes, depth: depthCeiling };
+  const result = { from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion || "q", score: bestScore, nodes: searchNodes, depth: depthCeiling };
+  reportSearchProgress({ stage: "complete", completedDepth: depthCeiling });
+  searchProgressCallback = null;
+  return result;
 }
