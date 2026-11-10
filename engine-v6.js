@@ -3,6 +3,13 @@ import { evaluateNnue, loadNnueWeights, hasNnueWeights } from "./nnue-v6.js";
 const VALUE = { p: 100, n: 320, b: 335, r: 500, q: 900, k: 20000 };
 const MATE = 100000;
 const MAX_PLY = 128;
+const LMR_REDUCTIONS = Array.from({ length: MAX_PLY }, (_, depth) =>
+  Array.from({ length: 256 }, (_, moveIndex) =>
+    depth >= 3 && moveIndex >= 3
+      ? Math.min(depth - 2, 1 + Math.floor(Math.log(depth) * Math.log(moveIndex + 1) / 2.2))
+      : 0
+  )
+);
 
 // Deterministic split 32-bit Zobrist keys with an exact 53-bit Number key.
 let zobristSeed = 0x4d415256;
@@ -65,8 +72,8 @@ function countSearchNode(game) {
   return true;
 }
 
-function zobristHash(game) {
-  const fen = game.fen().split(" ");
+function zobristHashFen(fenString) {
+  const fen = fenString.split(" ");
   const placement = fen[0];
   let low = 0;
   let high = 0;
@@ -102,6 +109,28 @@ function zobristHash(game) {
   low ^= Z_HALFMOVE[halfmove][0];
   high ^= Z_HALFMOVE[halfmove][1];
   return (high & 0x1fffff) * 4294967296 + (low >>> 0);
+}
+
+function zobristHash(game) {
+  return zobristHashFen(game.fen());
+}
+
+function sideHasNullMoveMaterialFen(fen) {
+  const sideIndex = fen.indexOf(" ");
+  const side = fen[sideIndex + 1];
+  let material = 0;
+  for (let i = 0; i < sideIndex; i++) {
+    const token = fen[i];
+    if (token === "/" || (token >= "1" && token <= "8")) continue;
+    const type = token.toLowerCase();
+    if (type === "p" || type === "k" || VALUE[type] === undefined) continue;
+    const isWhite = token === token.toUpperCase();
+    if ((side === "w" && isWhite) || (side === "b" && !isWhite)) {
+      material += VALUE[type];
+      if (material >= VALUE.r) return true;
+    }
+  }
+  return false;
 }
 
 function storeTT(key, entry) {
@@ -365,18 +394,6 @@ function makeNullPosition(game) {
   return new game.constructor(fields.join(" "));
 }
 
-function sideHasNullMoveMaterial(game) {
-  const board = game.board();
-  const side = game.turn();
-  let material = 0;
-  for (const row of board) for (const piece of row) {
-    if (piece && piece.color === side && piece.type !== "p" && piece.type !== "k") {
-      material += VALUE[piece.type];
-    }
-  }
-  return material >= VALUE.r;
-}
-
 function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove = null) {
   if (!countSearchNode(game)) return evaluate(game);
   const terminal = terminalScore(game, ply);
@@ -385,7 +402,8 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
   if (ply >= MAX_PLY - 1) return evaluate(game);
 
   const originalAlpha = alpha;
-  const key = zobristHash(game);
+  const fen = game.fen();
+  const key = zobristHashFen(fen);
   const cached = table.get(key);
   const ttMove = cached?.move || null;
   if (cached && cached.depth >= depth) {
@@ -402,7 +420,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
   // the real position is very likely good enough to cause a beta cutoff.
   // Disable consecutive nulls and avoid likely zugzwang positions.
   if (allowNull && depth >= 3 && !inCheck && beta < MATE - MAX_PLY &&
-      sideHasNullMoveMaterial(game)) {
+      sideHasNullMoveMaterialFen(fen)) {
     const reduction = 2 + Math.floor(depth / 4);
     const nullPosition = makeNullPosition(game);
     const nullScore = -negamax(
@@ -438,7 +456,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
     } else {
       let reduction = 0;
       if (!inCheck && depth >= 3 && i >= 3 && quiet && !game.isCheck()) {
-        reduction = Math.min(depth - 2, 1 + Math.floor(Math.log(depth) * Math.log(i + 1) / 2.2));
+        reduction = LMR_REDUCTIONS[depth][Math.min(i, 255)];
       }
 
       score = -negamax(game, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, true, move);
