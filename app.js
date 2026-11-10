@@ -272,7 +272,7 @@ playNav.addEventListener("click", () => setSection("play"));
 arenaNav.addEventListener("click", () => setSection("arena"));
 
 function updateArenaStats() {
-  document.querySelector("#v5-wins").textContent = arenaStats.v4;
+  document.querySelector("#v5-wins").textContent = arenaStats.v5;
   document.querySelector("#arena-draws").textContent = arenaStats.draws;
   document.querySelector("#v3-wins").textContent = arenaStats.v3;
 }
