@@ -101,7 +101,6 @@ function makeEngineMove() {
   legalTargets = [];
   render();
 
-  // Let the browser paint the thinking state before the search begins.
   setTimeout(() => {
     try {
       const depth = Number(depthEl.value);
@@ -128,13 +127,12 @@ document.querySelector("#new-game").addEventListener("click", () => {
 
 undoButton.addEventListener("click", () => {
   if (thinking || arenaRunning) return;
-  if (game.turn() === "w" && game.history().length) game.undo(); // Undo Marlin's move.
-  if (game.turn() === "b" && game.history().length) game.undo(); // Undo your move.
+  if (game.turn() === "w" && game.history().length) game.undo();
+  if (game.turn() === "b" && game.history().length) game.undo();
   selected = null;
   legalTargets = [];
   render();
 });
-
 
 // PGN maker: validates imported games and tags Marlin as GM on either side.
 const pgnInput = document.querySelector("#pgn-input");
@@ -192,14 +190,30 @@ document.querySelector("#download-pgn").addEventListener("click", () => {
   URL.revokeObjectURL(url);
 });
 
-// Export the Arena's completed or stopped game so it can be analysed externally.
-document.querySelector("#arena-download-pgn").addEventListener("click", () => {
-  const pgn = game.pgn({ maxWidth: 100 });
+// Arena PGN controls: copy for quick pasting or download as a file.
+function getArenaPgn() {
   if (!game.history().length) {
-    document.querySelector("#arena-progress").textContent = "No Arena moves to export yet.";
-    return;
+    document.querySelector("#arena-progress").textContent = "No Arena moves yet. Start or finish a match first.";
+    return "";
   }
-  const blob = new Blob([pgn + "\n"], { type: "application/x-chess-pgn;charset=utf-8" });
+  return game.pgn({ maxWidth: 100 }) + "\n";
+}
+
+document.querySelector("#arena-copy-pgn").addEventListener("click", async () => {
+  const pgn = getArenaPgn();
+  if (!pgn) return;
+  try {
+    await navigator.clipboard.writeText(pgn);
+    document.querySelector("#arena-progress").textContent = "Arena PGN copied — paste it into Arena, Lichess, or another chess tool.";
+  } catch (error) {
+    document.querySelector("#arena-progress").textContent = "Clipboard blocked by browser. Use Download Arena PGN instead.";
+  }
+});
+
+document.querySelector("#arena-download-pgn").addEventListener("click", () => {
+  const pgn = getArenaPgn();
+  if (!pgn) return;
+  const blob = new Blob([pgn], { type: "application/x-chess-pgn;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -207,7 +221,6 @@ document.querySelector("#arena-download-pgn").addEventListener("click", () => {
   link.click();
   URL.revokeObjectURL(url);
 });
-
 
 let arenaWorker = null;
 let arenaRequestId = 0;
@@ -252,8 +265,6 @@ function stopArenaWorker() {
     arenaWorker.terminate();
     arenaWorker = null;
   }
-  // Terminating a Worker does not fire onmessage/onerror. Settle the
-  // waiting move request so Stop cannot leave the Arena loop stuck.
   if (arenaPendingResolve) {
     const resolve = arenaPendingResolve;
     arenaPendingResolve = null;
