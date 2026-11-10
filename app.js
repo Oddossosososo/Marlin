@@ -336,7 +336,7 @@ async function startArenaMatch() {
   startButton.disabled = true;
   document.querySelector("#arena-live").textContent = "LIVE";
   const v5Color = arenaMatchCount % 2 === 0 ? "b" : "w";
-  document.querySelector("#arena-progress").textContent = "V5 vs V3 — " + (v3Color === "b" ? "V6 White" : "V5 White") + " — match running";
+  document.querySelector("#arena-progress").textContent = "V6 vs V5 — " + (v5Color === "b" ? "V6 White" : "V5 White") + " — match running";
   document.querySelector("#arena-ply").textContent = "0 plies";
   render();
   try {
