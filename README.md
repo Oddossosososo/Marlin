@@ -5,8 +5,9 @@ MARLIN is an experimental browser chess engine and training project.
 ## Current engine: V7
 
 - V7 is the default engine for Play and PGN next-move analysis.
-- Iterative deepening, alpha-beta / negamax, transposition table, PVS, LMR and null-move pruning. Search stops at the selected depth; there is no fixed node-count cutoff. Depth 6 is the default in Play, Arena and PGN analysis. Actual nodes are reported for diagnostics. V7's search hot path avoids temporary board allocation during Zobrist hashing and reuses previous-move context rather than rebuilding move history at every node.
+- Iterative deepening, alpha-beta / negamax, transposition table, PVS, LMR and null-move pruning. Search stops at the selected depth; there is no fixed node-count cutoff. Depth 6 is the default in Play, Arena and PGN analysis. Arena reads the selected depth control and sends that same depth to both V7 and V6. Actual nodes are reported for diagnostics. V7's search hot path avoids temporary board allocation during Zobrist hashing and reuses previous-move context rather than rebuilding move history at every node.
 - A dedicated handcrafted evaluation adds king safety, pawn structure, piece activity and mobility, bishop-pair value, rook files and endgame king activity. Structural weaknesses are evaluated as soft penalties; tactics can justify them.
+- Experimental capture penalty: a capturing piece pays half its own material value in search scoring; a king capture pays the full king value (20,000 centipawns). The piece is not removed or damaged, and this is a non-standard evaluation rule. Capturing moves from book/tablebase shortcuts are sent through search so the penalty is applied.
 - The opening policy consults Lichess's master-game opening explorer, enforces the selected first-move repertoire, and falls back to the local curated lines when the service is unavailable.
 - V7 loads its own weights from `nnue/marlin-v7.nnue.json`. Until the V7 training workflow publishes that file, V7 uses its handcrafted evaluation.
 - Syzygy tablebase probing remains an optional online endgame helper.
