@@ -31,11 +31,20 @@ let searchNodeLimit = Infinity;
 let searchLimitReached = false;
 let activeSearchDepth = 0;
 let searchProgressCallback = null;
+let searchStartedAt = 0;
+let nextProgressNode = 50000;
 
 function reportSearchProgress(details = {}) {
   if (typeof searchProgressCallback !== "function") return;
   try {
-    searchProgressCallback({ depth: activeSearchDepth, nodes: searchNodes, ...details });
+    const elapsedMs = searchStartedAt ? Math.max(1, Date.now() - searchStartedAt) : 0;
+    searchProgressCallback({
+      depth: activeSearchDepth,
+      nodes: searchNodes,
+      elapsedMs,
+      nps: elapsedMs ? Math.round(searchNodes * 1000 / elapsedMs) : 0,
+      ...details
+    });
   } catch {
     // UI progress reporting must never interrupt the chess search.
   }
@@ -47,7 +56,10 @@ function countSearchNode(game) {
     return false;
   }
   searchNodes++;
-  if (searchNodes % 50000 === 0) reportSearchProgress({ stage: "searching" });
+  if (searchProgressCallback && searchNodes >= nextProgressNode) {
+    nextProgressNode += 50000;
+    reportSearchProgress({ stage: "searching" });
+  }
   return true;
 }
 
@@ -455,6 +467,8 @@ export function findBestMove(game, maxDepth = 5, options = {}) {
   searchNodes = 0;
   searchLimitReached = false;
   activeSearchDepth = 0;
+  searchStartedAt = Date.now();
+  nextProgressNode = 50000;
   searchProgressCallback = typeof options?.onProgress === "function" ? options.onProgress : null;
   // When a node budget is supplied, iterative deepening continues until the
   // budget is exhausted. The UI depth selector is the requested baseline;
@@ -470,6 +484,7 @@ export function findBestMove(game, maxDepth = 5, options = {}) {
 
   let bestMove = moves[0];
   let bestScore = -Infinity;
+  let completedDepth = 0;
 
   for (let depth = 1; depth <= depthCeiling; depth++) {
     activeSearchDepth = depth;
@@ -528,11 +543,23 @@ export function findBestMove(game, maxDepth = 5, options = {}) {
     if (!iterationCompleted) break;
     bestMove = iterationMove;
     bestScore = iterationScore;
+    completedDepth = depth;
     reportSearchProgress({ stage: "depth-complete", completedDepth: depth });
   }
 
-  const result = { from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion || "q", score: bestScore, nodes: searchNodes, nodeLimitReached: searchLimitReached };
-  reportSearchProgress({ stage: "complete", completedDepth: result.depth || maxDepth });
+  const elapsedMs = Math.max(1, Date.now() - searchStartedAt);
+  const result = {
+    from: bestMove.from,
+    to: bestMove.to,
+    promotion: bestMove.promotion || "q",
+    score: bestScore,
+    nodes: searchNodes,
+    depth: completedDepth,
+    elapsedMs,
+    nps: Math.round(searchNodes * 1000 / elapsedMs),
+    nodeLimitReached: searchLimitReached
+  };
+  reportSearchProgress({ stage: "complete", completedDepth });
   searchProgressCallback = null;
   return result;
 }
