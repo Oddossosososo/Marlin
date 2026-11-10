@@ -6,6 +6,7 @@ const statusEl = document.querySelector("#status");
 const thinkingEl = document.querySelector("#thinking");
 const historyEl = document.querySelector("#history");
 const depthEl = document.querySelector("#depth");
+const stopSearchButton = document.querySelector("#stop-search");
 const undoButton = document.querySelector("#undo");
 let selected = null;
 let legalTargets = [];
@@ -22,10 +23,7 @@ const playNav = document.querySelector("#play-nav");
 const arenaNav = document.querySelector("#arena-nav");
 const arenaPanel = document.querySelector("#arena-panel");
 
-const symbols = {
-  w: { k:"♔", q:"♕", r:"♖", b:"♗", n:"♘", p:"♙" },
-  b: { k:"♚", q:"♛", r:"♜", b:"♝", n:"♞", p:"♟︎" }
-};
+const pieceNames = { k:"king", q:"queen", r:"rook", b:"bishop", n:"knight", p:"pawn" };
 const files = "abcdefgh";
 
 function statusText() {
@@ -50,7 +48,14 @@ function render() {
       button.setAttribute("aria-label", square + (piece ? " " + piece.color + " " + piece.type : " empty"));
       if (selected === square) button.classList.add("selected");
       if (legalTargets.includes(square)) button.classList.add(piece ? "capture" : "legal");
-      button.textContent = piece ? symbols[piece.color][piece.type] : "";
+      if (piece) {
+        const pieceImage = document.createElement("img");
+        pieceImage.className = "piece-image";
+        pieceImage.src = "./pieces/cburnett/" + piece.color + piece.type.toUpperCase() + ".svg";
+        pieceImage.alt = (piece.color === "w" ? "White " : "Black ") + pieceNames[piece.type];
+        pieceImage.draggable = false;
+        button.appendChild(pieceImage);
+      }
       button.addEventListener("click", () => onSquareClick(square));
       boardEl.appendChild(button);
     }
@@ -73,6 +78,7 @@ function render() {
     }
   }
   undoButton.disabled = thinking || arenaRunning || history.length === 0;
+  stopSearchButton.disabled = !thinking;
 }
 
 function onSquareClick(square) {
@@ -117,6 +123,13 @@ function getEngineMove(depth) {
       engineWorker = new Worker("./engine-worker.js", { type: "module" });
       engineWorker.onmessage = (event) => {
         if (!pendingEngineRequest || event.data.requestId !== pendingEngineRequest.requestId) return;
+        if (event.data.type === "progress") {
+          const depth = Number(event.data.depth || 0);
+          const nodes = Number(event.data.nodes || 0).toLocaleString();
+          const nps = Number(event.data.nps || 0).toLocaleString();
+          thinkingEl.textContent = "MARLIN V7 · DEPTH " + depth + " · " + nodes + " NODES · " + nps + " NPS";
+          return;
+        }
         const pending = pendingEngineRequest;
         pendingEngineRequest = null;
         if (event.data.error) reject(new Error(event.data.error));
@@ -194,6 +207,14 @@ document.querySelector("#new-game").addEventListener("click", () => {
   selected = null;
   legalTargets = [];
   thinking = false;
+  render();
+});
+
+stopSearchButton.addEventListener("click", () => {
+  if (!thinking) return;
+  cancelEngineRequest();
+  thinking = false;
+  engineStatus = "SEARCH STOPPED";
   render();
 });
 
