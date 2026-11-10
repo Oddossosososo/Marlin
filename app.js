@@ -518,6 +518,7 @@ async function startArenaMatch() {
         }
       }
       game.move(move);
+      document.querySelector("#arena-live").textContent = "LIVE";
       render();
       document.querySelector("#arena-ply").textContent = game.history().length + " plies";
       const last = game.history({ verbose: true }).slice(-1)[0];
