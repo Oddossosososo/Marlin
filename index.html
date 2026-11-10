@@ -16,7 +16,7 @@
       <button class="side-link" id="arena-nav">⚔ <span>Arena</span></button>
       <div class="side-foot">MARLIN<br><small>ENGINE LAB</small></div>
     </nav>
-    <div class="workspace">\n    <header><div class="brand"><span class="mark">♞</span><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.3 · ARENA BOARD FIX</span></header>
+    <div class="workspace">\n    <header><div class="brand"><span class="mark">♞</span><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.4 · SEARCH + PGN</span></header>
     <section class="layout">
       <div class="board-wrap">
         <div class="board" id="board" role="grid" aria-label="Chess board"></div>
@@ -39,7 +39,7 @@
       <div class="arena-board-slot" id="arena-board-slot"></div>
       <div class="arena-heading"><div><div class="section-title">ENGINE BATTLE</div><h2>V2 vs V1</h2><p class="pgn-help">Watch the upgraded Marlin engine play the preserved original against itself.</p></div><span class="arena-live" id="arena-live">READY</span></div>
       <div class="arena-contenders">
-        <div class="contender newer"><small>WHITE · NEW</small><strong>Marlin V2</strong><span>Search V2 · PVS / LMR</span></div>
+        <div class="contender newer"><small>WHITE · NEW</small><strong>Marlin V2</strong><span>Search V2 · Alpha-beta / PVS / LMR / Null pruning</span></div>
         <div class="versus">VS</div>
         <div class="contender older"><small>BLACK · OLD</small><strong>Marlin V1</strong><span>Original baseline engine</span></div>
       </div>
@@ -50,6 +50,7 @@
         <select id="arena-speed"><option value="100">Fast</option><option value="450" selected>Normal</option><option value="1000">Slow</option></select>
         <button id="arena-start" class="primary">Start match</button>
         <button id="arena-stop">Stop</button>
+        <button id="arena-download-pgn">Export Arena PGN</button>
       </div>
       <div class="arena-progress"><span id="arena-progress">No match played yet.</span><span id="arena-ply">0 plies</span></div>
       <div class="arena-results">
