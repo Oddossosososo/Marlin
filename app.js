@@ -25,6 +25,7 @@ const arenaPanel = document.querySelector("#arena-panel");
 
 const pieceNames = { k:"king", q:"queen", r:"rook", b:"bishop", n:"knight", p:"pawn" };
 const files = "abcdefgh";
+const MARLIN_LOGO = new URL("./Screenshot%202026-11-10%206.36.32%20PM.png", import.meta.url).href;
 
 function updatePlayerIdentity() {
   const blackPlayer = document.querySelector("#black-player");
@@ -39,7 +40,7 @@ function updatePlayerIdentity() {
     element.classList.remove("human-player");
     element.classList.add("engine-player");
     element.innerHTML =
-      '<img class="player-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="MARLIN engine logo">' +
+      '<img class="player-logo" src="' + MARLIN_LOGO + '" alt="MARLIN engine logo">' +
       '<span class="player-copy"><small>MARLIN ENGINE</small><strong>' + name + '</strong><em>CHESS ENGINE</em></span>' +
       '<span class="player-badge">BOT</span>';
   };
