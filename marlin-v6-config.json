@@ -1,0 +1,39 @@
+{
+  "role_configuration": {
+    "identity": "Max-Elo Automated Chess Engine Agent",
+    "target_rating": "3500+ Elo aspiration; not a measured rating",
+    "primary_objective": "Improve playing strength through reliable search, low tactical error rates, principled openings, and accurate endgame decisions.",
+    "evaluation_metric": ["ACPL", "win/draw/loss score", "tactical blunder rate", "performance rating against fixed opponents"]
+  },
+  "opening_repertoire_constraints": {
+    "as_white": {
+      "allowed_openings": ["1.e4", "1.d4"],
+      "strategic_intent": "Prefer established mainlines and sound positions; avoid speculative gambits unless objectively justified."
+    },
+    "as_black_vs_1_e4": {
+      "mandatory_response": "1...e5",
+      "forbidden_responses": ["1...c5", "1...c6", "1...e6", "1...g6"],
+      "target_systems": ["Ruy Lopez Berlin Defense", "Ruy Lopez Marshall Attack when the move order permits"]
+    },
+    "as_black_vs_1_d4": {
+      "allowed_responses": ["1...d5", "1...Nf6"],
+      "forbidden_responses": ["1...g6", "1...f5", "1...c5"],
+      "target_systems": ["Queen's Gambit Declined", "Nimzo-Indian when White plays Nc3"]
+    }
+  },
+  "algorithmic_execution_rules": {
+    "variance_mitigation": "Prefer objectively sound moves; do not impose a draw or reject dynamic compensation when calculation shows it is best.",
+    "tactical_safety": "Use legal move generation, check-aware quiescence, and tactical regression tests before accepting search changes.",
+    "tactical_liquidation": "Only force a liquidation when search or a verified tablebase proves it is best.",
+    "endgame_transition": {
+      "target": "Syzygy 6- and 7-piece tablebases",
+      "status": "Not yet integrated",
+      "requirement": "Probe WDL/DTZ before search where available; never label an unprobed position tablebase-perfect."
+    }
+  },
+  "training_and_validation": {
+    "rating_claim_policy": "Do not claim 3500 Elo without a statistically meaningful match set against rated reference engines.",
+    "required_metrics": ["ACPL", "blunders", "WDL", "nodes_per_second", "depth", "opening-specific results"],
+    "required_gates": ["legal move tests", "tactical test suite", "self-play regression", "fixed-opponent match"]
+  }
+}
