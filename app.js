@@ -134,6 +134,21 @@ undoButton.addEventListener("click", () => {
   render();
 });
 
+// PGN branding: standard PGN headers keep Marlin attribution when shared or downloaded.
+function addMarlinPgnBranding(pgn, eventName = "Marlin Chess Game") {
+  const tags = [
+    '[Event "' + eventName + '"]',
+    '[Site "https://oddossosososo.github.io/Marlin/"]',
+    '[Annotator "Marlin Chess Engine"]'
+  ];
+  let text = (pgn || "").trim();
+  // Replace any existing Event/Site/Annotator headers, then add the Marlin tags.
+  text = text.replace(/^\[(?:Event|Site|Annotator) "[^"]*"\]\s*\n/gm, "");
+  const split = text.indexOf("\n\n");
+  if (split >= 0) text = text.slice(split + 2);
+  return tags.join("\n") + "\n\n" + text.trim();
+}
+
 // PGN maker: validates imported games and tags Marlin as GM on either side.
 const pgnInput = document.querySelector("#pgn-input");
 const pgnOutput = document.querySelector("#pgn-output");
@@ -141,14 +156,14 @@ const pgnStatus = document.querySelector("#pgn-status");
 const marlinColor = document.querySelector("#marlin-color");
 
 document.querySelector("#use-current-pgn").addEventListener("click", () => {
-  pgnInput.value = game.pgn({ maxWidth: 80 });
+  pgnInput.value = addMarlinPgnBranding(game.pgn({ maxWidth: 80 }), "Marlin Current Game");
   pgnStatus.textContent = "Current game loaded into the PGN editor.";
 });
 
 document.querySelector("#make-pgn").addEventListener("click", () => {
   try {
     const imported = new Chess();
-    const source = pgnInput.value.trim() || game.pgn({ maxWidth: 80 });
+    const source = pgnInput.value.trim() || addMarlinPgnBranding(game.pgn({ maxWidth: 80 }), "Marlin Current Game");
     imported.loadPgn(source);
     const marlinIsWhite = marlinColor.value === "w";
     const whiteName = marlinIsWhite ? "Marlin" : "Player";
@@ -168,7 +183,7 @@ document.querySelector("#make-pgn").addEventListener("click", () => {
       blackTitle,
       '[Result "' + (imported.isCheckmate() ? (imported.turn() === "w" ? "0-1" : "1-0") : (imported.isDraw() ? "1/2-1/2" : "*")) + '"]'
     ].filter(Boolean).join("\n");
-    pgnOutput.value = headers + "\n\n" + body.replace(/^\[[^\n]*\]\s*\n/gm, "").trim();
+    pgnOutput.value = addMarlinPgnBranding(headers + "\n\n" + body.replace(/^\[[^\n]*\]\s*\n/gm, "").trim(), "Marlin PGN");
     pgnStatus.textContent = "PGN created and validated. Marlin is " + (marlinIsWhite ? "White" : "Black") + " with the GM title tag.";
   } catch (error) {
     pgnOutput.value = "";
@@ -196,7 +211,7 @@ function getArenaPgn() {
     document.querySelector("#arena-progress").textContent = "No Arena moves yet. Start or finish a match first.";
     return "";
   }
-  return game.pgn({ maxWidth: 100 }) + "\n";
+  return addMarlinPgnBranding(game.pgn({ maxWidth: 100 }), "Marlin V3 vs V2 Arena") + "\n";
 }
 
 document.querySelector("#arena-copy-pgn").addEventListener("click", async () => {
