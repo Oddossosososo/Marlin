@@ -37,16 +37,27 @@
   "opening_policy": {
     "master_source": "Lichess master-game opening explorer",
     "local_fallback": "opening-policy-v6.js curated lines",
-    "white_first_moves": ["e4", "d4"],
-    "black_vs_e4": ["e5"],
-    "black_vs_d4": ["d5", "Nf6"],
+    "white_first_moves": [
+      "e4",
+      "d4"
+    ],
+    "black_vs_e4": [
+      "e5"
+    ],
+    "black_vs_d4": [
+      "d5",
+      "Nf6"
+    ],
     "master_book_max_plies": 30,
     "minimum_master_games_per_candidate": 5
   },
   "search": {
-    "node_budget_per_move": 5000000,
     "displayed_start_depth": 3,
-    "iterative_deepening": true
+    "iterative_deepening": true,
+    "stop_condition": "selected maximum depth",
+    "node_count": "measured for diagnostics only; not a stopping condition",
+    "default_play_depth": 5,
+    "default_arena_depth": 5
   },
   "training": {
     "positions": "sampled from human master PGNs and labelled by Stockfish",
