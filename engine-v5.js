@@ -26,6 +26,19 @@ const Z_HALFMOVE = Array.from({ length: 101 }, nextZobrist);
 const TT_LIMIT = 262144;
 const table = new Map();
 
+let searchNodes = 0;
+let searchNodeLimit = Infinity;
+let searchLimitReached = false;
+
+function countSearchNode(game) {
+  if (searchNodes >= searchNodeLimit) {
+    searchLimitReached = true;
+    return false;
+  }
+  searchNodes++;
+  return true;
+}
+
 function zobristHash(game) {
   const board = game.board();
   const fen = game.fen().split(" ");
@@ -235,6 +248,7 @@ function updateHistory(move, depth, bonus) {
 }
 
 function quiescence(game, alpha, beta, ply, remaining = 5) {
+  if (!countSearchNode(game)) return evaluate(game);
   const terminal = terminalScore(game, ply);
   if (terminal !== null) return terminal;
   const inCheck = game.isCheck();
@@ -255,6 +269,7 @@ function quiescence(game, alpha, beta, ply, remaining = 5) {
     game.move(move);
     const score = -quiescence(game, -beta, -alpha, ply + 1, remaining - 1);
     game.undo();
+    if (searchLimitReached) break;
     if (score >= beta) return beta;
     if (score > alpha) alpha = score;
   }
@@ -283,6 +298,7 @@ function sideHasNullMoveMaterial(game) {
 }
 
 function negamax(game, depth, alpha, beta, ply, allowNull = true) {
+  if (!countSearchNode(game)) return evaluate(game);
   const terminal = terminalScore(game, ply);
   if (terminal !== null) return terminal;
   if (depth <= 0) return quiescence(game, alpha, beta, ply);
@@ -319,6 +335,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true) {
       ply + 1,
       false
     );
+    if (searchLimitReached) return evaluate(game);
     if (nullScore >= beta) return beta;
   }
 
@@ -355,6 +372,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true) {
       }
     }
     game.undo();
+    if (searchLimitReached) break;
 
     if (score > best) {
       best = score;
@@ -380,7 +398,11 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true) {
   return best;
 }
 
-export function findBestMove(game, maxDepth = 4) {
+export function findBestMove(game, maxDepth = 4, options = {}) {
+  const requestedLimit = Number(options?.maxNodes);
+  searchNodeLimit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.floor(requestedLimit) : Infinity;
+  searchNodes = 0;
+  searchLimitReached = false;
   const moves = game.moves({ verbose: true });
   if (!moves.length) return null;
 
@@ -399,6 +421,7 @@ export function findBestMove(game, maxDepth = 4) {
     let iterationMove = bestMove;
     let iterationScore = -Infinity;
 
+    let iterationCompleted = true;
     // Aspiration windows: retry with a wider window after fail-low/high.
     while (true) {
       iterationMove = bestMove;
@@ -419,6 +442,7 @@ export function findBestMove(game, maxDepth = 4) {
           }
         }
         game.undo();
+        if (searchLimitReached) { iterationCompleted = false; break; }
 
         if (score > iterationScore) {
           iterationScore = score;
@@ -428,6 +452,7 @@ export function findBestMove(game, maxDepth = 4) {
         if (rootAlpha >= beta) break;
       }
 
+      if (!iterationCompleted) break;
       if (iterationScore <= alpha && alpha !== -Infinity) {
         window *= 2;
         alpha = iterationScore - window;
@@ -441,9 +466,10 @@ export function findBestMove(game, maxDepth = 4) {
       break;
     }
 
+    if (!iterationCompleted) break;
     bestMove = iterationMove;
     bestScore = iterationScore;
   }
 
-  return { from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion || "q", score: bestScore };
+  return { from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion || "q", score: bestScore, nodes: searchNodes, nodeLimitReached: searchLimitReached };
 }
