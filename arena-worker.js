@@ -1,13 +1,15 @@
 import { Chess } from "https://esm.sh/chess.js@1.4.0";
 import { findBestMove as findV3Move } from "./engine.js";
+import { findBestMove as findV4Move, initialiseV4 } from "./engine-v4.js";
 import { findBestMove as findV2Move } from "./engine-v2.js";
 
-self.onmessage = (event) => {
+self.onmessage = async (event) => {
   const { pgn, depth, version, requestId } = event.data;
   try {
     const game = new Chess();
     if (pgn) game.loadPgn(pgn);
-    const findMove = version === "v3" ? findV3Move : findV2Move;
+    const findMove = version === "v4" ? findV4Move : version === "v3" ? findV3Move : findV2Move;
+    if (version === "v4") await initialiseV4();
     const move = findMove(game, depth);
     self.postMessage({ requestId, move });
   } catch (error) {
