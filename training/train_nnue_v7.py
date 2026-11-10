@@ -81,6 +81,7 @@ def main():
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--seed", type=int, default=47)
+    parser.add_argument("--data-attribution", default="Operator-supplied PGN and Stockfish teacher labels; verify source licence.")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -153,6 +154,7 @@ def main():
             "epochs": args.epochs,
             "validation_positions": int(len(valid_ids)),
             "seed": args.seed,
+            "data_attribution": args.data_attribution,
             "data_sha256": {
                 str(path): hashlib.sha256(Path(path).read_bytes()).hexdigest()
                 for path in args.data
