@@ -12,6 +12,10 @@ let selected = null;
 let legalTargets = [];
 let thinking = false;
 let engineStatus = "MARLIN READY";
+let positionRevision = 0;
+let engineWorker = null;
+let engineRequestId = 0;
+let pendingEngineRequest = null;
 let arenaRunning = false;
 let arenaStopRequested = false;
 const arenaStats = { v6: 0, draws: 0, v5: 0 };
@@ -78,6 +82,7 @@ function onSquareClick(square) {
 
   if (selected && legalTargets.includes(square)) {
     game.move({ from: selected, to: square, promotion: "q" });
+    positionRevision++;
     selected = null;
     legalTargets = [];
     render();
@@ -95,34 +100,94 @@ function onSquareClick(square) {
   render();
 }
 
-function makeEngineMove() {
-  thinking = true;
-  selected = null;
-  legalTargets = [];
-  render();
+function cancelEngineRequest() {
+  if (engineWorker) {
+    engineWorker.terminate();
+    engineWorker = null;
+  }
+  if (pendingEngineRequest) {
+    const pending = pendingEngineRequest;
+    pendingEngineRequest = null;
+    pending.reject(new Error("Search cancelled"));
+  }
+}
 
-  setTimeout(async () => {
-    try {
-      const depth = Number(depthEl.value);
-      const nnue = await initialiseV6();
-      const move = await findV6Move(game, depth);
-      if (move?.source === "syzygy-7-man") engineStatus = "MARLIN V6 · SYZYGY 6/7-MAN";
-      else if (move?.source === "opening-book") engineStatus = "MARLIN V6 · OPENING BOOK";
-      else engineStatus = nnue.nnue ? "MARLIN V6 · NNUE ACTIVE" : "MARLIN V6 · CLASSICAL EVAL";
-      if (move && !game.isGameOver()) game.move(move);
-    } catch (error) {
-      console.error("Marlin search error:", error);
-      engineStatus = "ENGINE ERROR — see console";
-    } finally {
-      thinking = false;
-      render();
+function getEngineMove(depth) {
+  return new Promise((resolve, reject) => {
+    if (!engineWorker) {
+      engineWorker = new Worker("./engine-worker.js", { type: "module" });
+      engineWorker.onmessage = (event) => {
+        if (!pendingEngineRequest || event.data.requestId !== pendingEngineRequest.requestId) return;
+        const pending = pendingEngineRequest;
+        pendingEngineRequest = null;
+        if (event.data.error) reject(new Error(event.data.error));
+        else resolve(event.data);
+      };
+      engineWorker.onerror = (event) => {
+        const pending = pendingEngineRequest;
+        pendingEngineRequest = null;
+        if (engineWorker) engineWorker.terminate();
+        engineWorker = null;
+        if (pending) pending.reject(new Error(event.message || "MARLIN worker failed"));
+      };
     }
-  }, 40);
+
+    const requestId = ++engineRequestId;
+    pendingEngineRequest = { requestId, resolve, reject };
+    engineWorker.postMessage({
+      requestId,
+      pgn: game.pgn({ maxWidth: 1000 }),
+      depth
+    });
+  });
+}
+
+async function makeEngineMove() {
+  if (thinking || game.isGameOver() || game.turn() !== "b") return;
+  thinking = true;
+  render();
+  const requestedRevision = positionRevision;
+
+  try {
+    const result = await getEngineMove(Number(depthEl.value));
+    if (requestedRevision !== positionRevision || game.turn() !== "b" || game.isGameOver()) return;
+
+    const candidate = result.move;
+    const legalMove = game.moves({ verbose: true }).find(move =>
+      move.from === candidate.from &&
+      move.to === candidate.to &&
+      (move.promotion || "q") === (candidate.promotion || "q")
+    );
+    if (!legalMove) throw new Error("MARLIN returned a move that is not legal in this position.");
+
+    if (candidate.source === "syzygy-7-man") engineStatus = "MARLIN V6 · SYZYGY 6/7-MAN";
+    else if (candidate.source === "opening-book") engineStatus = "MARLIN V6 · OPENING BOOK";
+    else if (candidate.source === "search-fallback") engineStatus = "MARLIN V6 · SEARCH FALLBACK";
+    else engineStatus = result.nnue ? "MARLIN V6 · NNUE ACTIVE" : "MARLIN V6 · CLASSICAL EVAL";
+
+    game.move({
+      from: legalMove.from,
+      to: legalMove.to,
+      promotion: legalMove.promotion || "q"
+    });
+    positionRevision++;
+  } catch (error) {
+    if (requestedRevision === positionRevision && error.message !== "Search cancelled") {
+      console.error("Marlin search error:", error);
+      engineStatus = "ENGINE ERROR — " + error.message;
+    }
+  } finally {
+    thinking = false;
+    render();
+  }
 }
 
 document.querySelector("#new-game").addEventListener("click", () => {
   if (arenaRunning) return;
+  positionRevision++;
+  cancelEngineRequest();
   game.reset();
+  engineStatus = "MARLIN READY";
   selected = null;
   legalTargets = [];
   thinking = false;
@@ -133,6 +198,7 @@ undoButton.addEventListener("click", () => {
   if (thinking || arenaRunning) return;
   if (game.turn() === "w" && game.history().length) game.undo();
   if (game.turn() === "b" && game.history().length) game.undo();
+  positionRevision++;
   selected = null;
   legalTargets = [];
   render();
