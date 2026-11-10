@@ -1,7 +1,67 @@
 const VALUE = { p: 100, n: 320, b: 335, r: 500, q: 900, k: 20000 };
 const MATE = 100000;
 const MAX_PLY = 128;
+
+// Deterministic 64-bit Zobrist keys. chess.js owns move making/undoing, so
+// V3 calculates the key from the current board and FEN state at each node.
+const MASK64 = 0xffffffffffffffffn;
+let zobristSeed = 0x4d41524c494e5633n;
+function nextZobrist() {
+  zobristSeed = (zobristSeed + 0x9e3779b97f4a7c15n) & MASK64;
+  let z = zobristSeed;
+  z = ((z ^ (z >> 30n)) * 0xbf58476d1ce4e5b9n) & MASK64;
+  z = ((z ^ (z >> 27n)) * 0x94d049bb133111ebn) & MASK64;
+  return (z ^ (z >> 31n)) & MASK64;
+}
+const PIECE_INDEX = { p: 0, n: 1, b: 2, r: 3, q: 4, k: 5 };
+const Z_PIECES = Array.from({ length: 64 }, () =>
+  Array.from({ length: 12 }, nextZobrist)
+);
+const Z_SIDE = nextZobrist();
+const Z_CASTLING = Array.from({ length: 4 }, nextZobrist);
+const Z_EP_FILE = Array.from({ length: 8 }, nextZobrist);
+const Z_HALFMOVE = Array.from({ length: 101 }, nextZobrist);
+const TT_LIMIT = 262144;
 const table = new Map();
+
+function zobristHash(game) {
+  const board = game.board();
+  const fen = game.fen().split(" ");
+  let hash = 0n;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = board[r][c];
+      if (!piece) continue;
+      const sideOffset = piece.color === "w" ? 0 : 6;
+      const pieceIndex = sideOffset + PIECE_INDEX[piece.type];
+      hash ^= Z_PIECES[r * 8 + c][pieceIndex];
+    }
+  }
+  if (fen[1] === "b") hash ^= Z_SIDE;
+  const castling = fen[2] || "-";
+  if (castling.includes("K")) hash ^= Z_CASTLING[0];
+  if (castling.includes("Q")) hash ^= Z_CASTLING[1];
+  if (castling.includes("k")) hash ^= Z_CASTLING[2];
+  if (castling.includes("q")) hash ^= Z_CASTLING[3];
+  if (fen[3] && fen[3] !== "-") {
+    const file = fen[3].charCodeAt(0) - 97;
+    if (file >= 0 && file < 8) hash ^= Z_EP_FILE[file];
+  }
+  const halfmove = Math.min(100, Math.max(0, Number(fen[4]) || 0));
+  hash ^= Z_HALFMOVE[halfmove];
+  return hash;
+}
+
+function storeTT(key, entry) {
+  const previous = table.get(key);
+  if (previous && previous.depth > entry.depth) return;
+  if (!previous && table.size >= TT_LIMIT) {
+    const oldestKey = table.keys().next().value;
+    if (oldestKey !== undefined) table.delete(oldestKey);
+  }
+  table.set(key, entry);
+}
+
 const killers = Array.from({ length: MAX_PLY }, () => [null, null]);
 const history = Object.create(null);
 
@@ -193,7 +253,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true) {
   if (ply >= MAX_PLY - 1) return evaluate(game);
 
   const originalAlpha = alpha;
-  const key = game.fen();
+  const key = zobristHash(game);
   const cached = table.get(key);
   const ttMove = cached?.move || null;
   if (cached && cached.depth >= depth) {
@@ -275,7 +335,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true) {
   }
 
   const flag = best <= originalAlpha ? "upper" : best >= beta ? "lower" : "exact";
-  table.set(key, { depth, score: scoreToTT(best, ply), flag, move: bestMove });
+  storeTT(key, { depth, score: scoreToTT(best, ply), flag, move: bestMove });
   return best;
 }
 
