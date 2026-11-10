@@ -292,16 +292,15 @@ function stopArenaWorker() {
 
 function getArenaMove(version, depth) {
   return new Promise((resolve, reject) => {
-    stopArenaWorker();
     const requestId = ++arenaRequestId;
-    const worker = new Worker("./arena-worker.js", { type: "module" });
-    arenaWorker = worker;
+    if (!arenaWorker) {
+      arenaWorker = new Worker("./arena-worker.js", { type: "module" });
+    }
+    const worker = arenaWorker;
     arenaPendingResolve = resolve;
 
     worker.onmessage = (event) => {
       if (event.data.requestId !== requestId) return;
-      worker.terminate();
-      if (arenaWorker === worker) arenaWorker = null;
       arenaPendingResolve = null;
       if (event.data.error) reject(new Error(event.data.error));
       else resolve(event.data.move);
