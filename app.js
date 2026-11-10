@@ -102,7 +102,7 @@ function makeEngineMove() {
   legalTargets = [];
   render();
 
-  setTimeout(() => {
+  setTimeout(async () => {
     try {
       const depth = Number(depthEl.value);
       const nnue = await initialiseV4();
