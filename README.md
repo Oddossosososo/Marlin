@@ -45,3 +45,23 @@ Then visit http://localhost:8000.
 ## Important
 
 Marlin v0.1 is a learning prototype. It is not expected to beat Stockfish. Search depth is adjustable, but deeper searches can take noticeably longer in a browser.
+
+
+## Native Rust + C++ experiment
+
+The first native engine component is a C++ bitboard implementation called from Rust through a small C ABI.
+
+- `cpp/attacks.cpp` — C++ knight attack generation
+- `src/lib.rs` — safe Rust wrapper and unit tests
+- `build.rs` — compiles the C++ source with the Rust `cc` build helper
+- `Cargo.toml` — native Rust crate configuration
+
+### Build and test
+
+Install the Rust toolchain and a C++ compiler, then run:
+
+```bash
+cargo test
+```
+
+This is currently a native build experiment. The existing browser game still uses `engine.js`; browser/WASM integration will be a later step after the native bridge is tested.
