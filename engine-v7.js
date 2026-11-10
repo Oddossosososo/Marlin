@@ -219,13 +219,15 @@ export async function initialiseV7() {
 }
 export { hasNnueWeights };
 
-function isAutomaticDraw(game) {
-  // isDraw() also calls isStalemate(), which regenerates every legal move.
-  // Search generates that list itself and checks mate/stalemate from it, so
-  // test only the remaining draw rules here.
-  return game.isDrawByFiftyMoves() ||
-    game.isInsufficientMaterial() ||
-    game.isThreefoldRepetition();
+function isAutomaticDraw(game, halfmoveClock = null) {
+  // isDraw() calls isStalemate(), which would generate the legal moves twice.
+  // A position cannot have occurred three times until at least eight reversible
+  // plies have elapsed, so skip repetition-history work before that point.
+  if (game.isDrawByFiftyMoves() || game.isInsufficientMaterial()) return true;
+  const reversiblePlies = halfmoveClock === null
+    ? Number(game.fen().split(" ")[4]) || 0
+    : halfmoveClock;
+  return reversiblePlies >= 8 && game.isThreefoldRepetition();
 }
 
 function scoreFromTT(score, ply) {
@@ -380,27 +382,34 @@ function makeNullPosition(game) {
 
 function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove = null) {
   countSearchNode();
-  const inCheck = game.isCheck();
-  const legalMoves = game.moves({ verbose: true });
-  // Detect mate/stalemate once and reuse this move list for search/quiescence.
-  if (legalMoves.length === 0) return inCheck ? -MATE + ply : 0;
-  if (isAutomaticDraw(game)) return 0;
-  if (depth <= 0) return quiescence(game, alpha, beta, ply, 5, legalMoves, inCheck);
+  if (depth <= 0) return quiescence(game, alpha, beta, ply);
   if (ply >= MAX_PLY - 1) return evaluate(game);
 
   const originalAlpha = alpha;
   const fen = game.fen();
+  const fenFields = fen.split(" ");
+  const halfmoveClock = Number(fenFields[4]) || 0;
+  const drawCandidate = isAutomaticDraw(game, halfmoveClock);
   const key = zobristHashFen(fen);
   const ttSlot = ttIndex(key);
   const ttHit = TT_VALID[ttSlot] && TT_KEYS[ttSlot] === key;
   const ttMove = ttHit ? ttMoveAt(ttSlot) : null;
-  if (ttHit && TT_DEPTH[ttSlot] >= depth) {
+
+  // Most transposition hits can now return before chess.js builds a full
+  // verbose legal-move list. Draw candidates still verify mate/stalemate first.
+  if (!drawCandidate && ttHit && TT_DEPTH[ttSlot] >= depth) {
     const ttScore = scoreFromTT(TT_SCORE[ttSlot], ply);
     const ttFlag = TT_FLAG[ttSlot];
     if (ttFlag === 1) return ttScore;
     if (ttFlag === 2 && ttScore >= beta) return ttScore;
     if (ttFlag === 3 && ttScore <= alpha) return ttScore;
   }
+
+  const inCheck = game.isCheck();
+  const legalMoves = game.moves({ verbose: true });
+  // Check mate/stalemate before declaring a 50-move or repetition draw.
+  if (legalMoves.length === 0) return inCheck ? -MATE + ply : 0;
+  if (drawCandidate) return 0;
 
   const counterKey = previousMove && isQuiet(previousMove) ? quietKey(previousMove) : null;
   const counterMove = counterKey ? counterMoves[counterKey] : null;
@@ -442,7 +451,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
       score = -negamax(game, depth - 1, -beta, -alpha, ply + 1, true, move);
     } else {
       let reduction = 0;
-      if (!inCheck && depth >= 3 && i >= 3 && quiet && !game.isCheck()) {
+      if (!inCheck && depth >= 3 && i >= 3 && quiet && !/[+#]$/.test(move.san || "")) {
         reduction = LMR_REDUCTIONS[depth][Math.min(i, 255)];
       }
 
