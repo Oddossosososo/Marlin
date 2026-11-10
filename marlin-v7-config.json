@@ -32,7 +32,23 @@
       "piece mobility and central-square control",
       "endgame king activity and rook coordination"
     ],
-    "structural_rules": "Soft evaluation penalties only; do not forbid a move when concrete tactics justify a structural concession."
+    "structural_rules": "Soft evaluation penalties only; do not forbid a move when concrete tactics justify a structural concession.",
+    "capture_penalty": {
+      "enabled": true,
+      "application": "Move-scoring penalty in root search, negamax and quiescence",
+      "standard_chess_rule": false,
+      "piece_penalty": "half the capturing piece's own material value",
+      "king_penalty_cp": 20000,
+      "examples_cp": {
+        "pawn": 50,
+        "knight": 160,
+        "bishop": 168,
+        "rook": 250,
+        "queen": 450,
+        "king": 20000
+      },
+      "opening_and_tablebase": "Capturing shortcut moves are not played directly; they fall back to V7 search."
+    }
   },
   "opening_policy": {
     "master_source": "Lichess master-game opening explorer",
