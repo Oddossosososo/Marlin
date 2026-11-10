@@ -16,7 +16,7 @@
       <button class="side-link" id="arena-nav">⚔ <span>Arena</span></button>
       <div class="side-foot"><img class="sidebar-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN</span><small>ENGINE LAB</small></div>
     </nav>
-    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.6 · MARLIN V5 SEARCH</span></header>
+    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.7 · MARLIN V6 SEARCH</span></header>
     <section class="layout">
       <div class="board-wrap">
         <div class="board" id="board" role="grid" aria-label="Chess board"></div>
@@ -26,7 +26,7 @@
         <div class="status"><span class="dot"></span><div><small>GAME STATUS</small><strong id="status">Your move — White</strong></div></div>
         <div class="controls">
           <label for="depth">ENGINE SEARCH</label>
-          <select id="depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Normal</option><option value="3">Depth 3 · Normal</option><option value="3" selected>Depth 3 · Fast</option><option value="4">Depth 4 · Strong</option><option value="5">Depth 5 · Stronger, slower</option></select>
+          <select id="depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Normal</option><option value="3">Depth 3 · Normal</option><option value="3">Depth 3 · Fast</option><option value="4">Depth 4 · Strong</option><option value="5" selected>Depth 5 · Stronger</option><option value="6">Depth 6 · Deep</option></select>
           <button id="new-game" class="primary">New game</button>
           <button id="undo">Undo last turn</button>
         </div>
@@ -37,15 +37,15 @@
     </section>
     <section class="arena-panel" id="arena-panel" hidden>
       <div class="arena-board-slot" id="arena-board-slot"></div>
-      <div class="arena-heading"><div class="arena-brand"><img class="section-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><div class="section-title">ENGINE BATTLE</div><h2>V5 vs V3</h2><p class="pgn-help">Compare the new V4 engine against V3 in self-play.</p></div></div><span class="arena-live" id="arena-live">READY</span></div>
+      <div class="arena-heading"><div class="arena-brand"><img class="section-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><div class="section-title">ENGINE BATTLE</div><h2>V6 vs V5</h2><p class="pgn-help">Compare the new V6 engine against V5 in self-play.</p></div></div><span class="arena-live" id="arena-live">READY</span></div>
       <div class="arena-contenders">
-        <div class="contender newer"><small>WHITE · NEW</small><strong>Marlin V5</strong><span>V5 · Aspiration / Countermoves / Zobrist / TT / PVS / LMR</span></div>
+        <div class="contender newer"><small>WHITE · NEW</small><strong>Marlin V6</strong><span>V6 · NNUE / SEE / deeper search / TT / PVS / LMR</span></div>
         <div class="versus">VS</div>
-        <div class="contender older"><small>BLACK · BASELINE</small><strong>Marlin V3</strong><span>V3 · Zobrist / TT / Alpha-beta / PVS / LMR / Null pruning</span></div>
+        <div class="contender older"><small>BLACK · BASELINE</small><strong>Marlin V3</strong><span>V5 · NNUE / Zobrist / TT / Alpha-beta / PVS / LMR / Null pruning</span></div>
       </div>
       <div class="arena-controls">
         <label for="arena-depth">SEARCH DEPTH</label>
-        <select id="arena-depth"><option value="1">1 · Fast</option><option value="2">2 · Normal</option><option value="3" selected>3 · Balanced</option><option value="4">4 · Slow</option></select>
+        <select id="arena-depth"><option value="1">1 · Fast</option><option value="2">2 · Normal</option><option value="4">4 · Strong</option><option value="5" selected>5 · Stronger</option><option value="6">6 · Deep</option></select>
         <label for="arena-speed">MOVE SPEED</label>
         <select id="arena-speed"><option value="100">Fast</option><option value="450" selected>Normal</option><option value="1000">Slow</option></select>
         <button id="arena-start" class="primary">Start match</button>
@@ -55,9 +55,9 @@
       </div>
       <div class="arena-progress"><span id="arena-progress">No match played yet.</span><span id="arena-ply">0 plies</span></div>
       <div class="arena-results">
-        <div><small>V5 WINS</small><strong id="v5-wins">0</strong></div>
+        <div><small>V6 WINS</small><strong id="v5-wins">0</strong></div>
         <div><small>DRAWS</small><strong id="arena-draws">0</strong></div>
-        <div><small>V3 WINS</small><strong id="v3-wins">0</strong></div>
+        <div><small>V5 WINS</small><strong id="v3-wins">0</strong></div>
       </div>
       <p class="pgn-help">This is a local self-play test, not official Fishtest or an Elo rating. One match is shown on the board.</p>
     </section>
