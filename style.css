@@ -27,3 +27,40 @@ footer{display:flex;align-items:center;justify-content:center;gap:10px}
 /* Locally hosted Cburnett SVG chess pieces */
 .piece-image{display:block;width:92%;height:92%;object-fit:contain;pointer-events:none;user-select:none;-webkit-user-drag:none}
 .search-depth-hint{margin:0;color:var(--muted);font-size:10px;line-height:1.5}
+
+/* Player nameplates: make the engine identity visible instead of generic colour labels. */
+.player-identity{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-height:68px;
+  padding:9px 13px;
+  margin:0 0 10px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:linear-gradient(135deg,#1a2938,#111b26);
+  box-shadow:0 8px 22px #0002;
+}
+.player-identity.human-player{margin:10px 0 0}
+.player-logo,.human-avatar{
+  width:48px;height:48px;flex:0 0 48px;
+  object-fit:contain;border-radius:10px;
+  background:#fff;border:1px solid #dce5e8;padding:2px;
+}
+.human-avatar{
+  display:grid;place-items:center;
+  background:#243445;color:#eaf2f7;border:1px solid #43586d;
+  font-size:12px;font-weight:900;letter-spacing:1px;
+}
+.player-copy{display:grid;gap:2px;min-width:0}
+.player-copy small{font-size:9px;color:var(--muted);letter-spacing:1.5px}
+.player-copy strong{font-size:15px;letter-spacing:1px;color:#f3f6fa}
+.player-copy em{font-size:9px;font-style:normal;color:var(--muted);letter-spacing:1.2px}
+.player-badge{margin-left:auto;border:1px solid #315c5a;border-radius:30px;padding:6px 9px;font-size:8px;letter-spacing:1.2px;color:var(--accent)}
+.human-player .player-badge{color:#a9bdd0;border-color:#43586d}
+@media(max-width:420px){
+  .player-identity{min-height:58px;padding:7px 9px;gap:9px}
+  .player-logo,.human-avatar{width:42px;height:42px;flex-basis:42px}
+  .player-copy strong{font-size:13px}
+  .player-badge{font-size:7px;padding:5px 7px}
+}
