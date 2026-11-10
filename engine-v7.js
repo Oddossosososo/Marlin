@@ -6,9 +6,9 @@ const MATE = 100000;
 const MAX_PLY = 128;
 
 // Deterministic 64-bit Zobrist keys. chess.js owns move making/undoing, so
-// V6 calculates the key from the current board and FEN state at each node.
+// V7 calculates the key from the current board and FEN state at each node.
 const MASK64 = 0xffffffffffffffffn;
-let zobristSeed = 0x4d41524c494e5636n;
+let zobristSeed = 0x4d41524c494e5637n;
 function nextZobrist() {
   zobristSeed = (zobristSeed + 0x9e3779b97f4a7c15n) & MASK64;
   let z = zobristSeed;
