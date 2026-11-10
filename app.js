@@ -104,7 +104,7 @@ function makeEngineMove() {
     try {
       const depth = Number(depthEl.value);
       const nnue = await initialiseV6();
-      const move = findV6Move(game, depth);
+      const move = await findV6Move(game, depth);
       thinkingEl.textContent = nnue.nnue ? "MARLIN V6 · NNUE ACTIVE" : "MARLIN V6 · NNUE NOT TRAINED (CLASSICAL EVAL)";
       if (move && !game.isGameOver()) game.move(move);
     } catch (error) {
