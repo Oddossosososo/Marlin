@@ -29,6 +29,17 @@ const table = new Map();
 let searchNodes = 0;
 let searchNodeLimit = Infinity;
 let searchLimitReached = false;
+let activeSearchDepth = 0;
+let searchProgressCallback = null;
+
+function reportSearchProgress(details = {}) {
+  if (typeof searchProgressCallback !== "function") return;
+  try {
+    searchProgressCallback({ depth: activeSearchDepth, nodes: searchNodes, ...details });
+  } catch {
+    // UI progress reporting must never interrupt the chess search.
+  }
+}
 
 function countSearchNode(game) {
   if (searchNodes >= searchNodeLimit) {
@@ -36,6 +47,7 @@ function countSearchNode(game) {
     return false;
   }
   searchNodes++;
+  if (searchNodes % 50000 === 0) reportSearchProgress({ stage: "searching" });
   return true;
 }
 
@@ -442,6 +454,8 @@ export function findBestMove(game, maxDepth = 5, options = {}) {
   searchNodeLimit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.floor(requestedLimit) : Infinity;
   searchNodes = 0;
   searchLimitReached = false;
+  activeSearchDepth = 0;
+  searchProgressCallback = typeof options?.onProgress === "function" ? options.onProgress : null;
   // When a node budget is supplied, iterative deepening continues until the
   // budget is exhausted. The UI depth selector is the requested baseline;
   // the hard node cap, not that baseline, ends the search.
@@ -458,6 +472,8 @@ export function findBestMove(game, maxDepth = 5, options = {}) {
   let bestScore = -Infinity;
 
   for (let depth = 1; depth <= depthCeiling; depth++) {
+    activeSearchDepth = depth;
+    reportSearchProgress({ stage: "searching", iterationStart: true });
     let window = depth >= 3 ? 35 : Infinity;
     let alpha = window === Infinity ? -Infinity : bestScore - window;
     let beta = window === Infinity ? Infinity : bestScore + window;
@@ -512,7 +528,11 @@ export function findBestMove(game, maxDepth = 5, options = {}) {
     if (!iterationCompleted) break;
     bestMove = iterationMove;
     bestScore = iterationScore;
+    reportSearchProgress({ stage: "depth-complete", completedDepth: depth });
   }
 
-  return { from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion || "q", score: bestScore, nodes: searchNodes, nodeLimitReached: searchLimitReached };
+  const result = { from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion || "q", score: bestScore, nodes: searchNodes, nodeLimitReached: searchLimitReached };
+  reportSearchProgress({ stage: "complete", completedDepth: result.depth || maxDepth });
+  searchProgressCallback = null;
+  return result;
 }
