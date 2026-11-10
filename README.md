@@ -2,31 +2,33 @@
 
 MARLIN is an experimental browser chess engine and training project.
 
-## Legacy versions
+## Current engine: V7
 
-MARLIN V1 and V2 are deprecated and retained only for historical reference and comparisons. They are not active site engines. New engine work and strength testing should target V6.
+- V7 is the default engine for Play and PGN next-move analysis.
+- Iterative deepening, alpha-beta / negamax, transposition table, PVS, LMR, null-move pruning and a five-million-node budget per move.
+- A dedicated handcrafted evaluation adds king safety, pawn structure, piece activity and mobility, bishop-pair value, rook files and endgame king activity. Structural weaknesses are evaluated as soft penalties; tactics can justify them.
+- The opening policy consults Lichess's master-game opening explorer, enforces the selected first-move repertoire, and falls back to the local curated lines when the service is unavailable.
+- V7 loads its own weights from `nnue/marlin-v7.nnue.json`. Until the V7 training workflow publishes that file, V7 uses its handcrafted evaluation.
+- Syzygy tablebase probing remains an optional online endgame helper.
 
-## Current engine: V6
+## V7 training
 
-- V6 search is the default engine for player games and uses a five-million-node budget per move in Play and Arena.
-- Iterative deepening, alpha-beta / negamax, transposition table, PVS, LMR and null-move pruning.
-- Static-exchange-aware quiescence filtering to avoid wasting search on losing captures.
-- V6 loads its own trained NNUE weights from `nnue/marlin-v6.nnue.json`.
-- If the V6 network has not finished training or cannot be loaded, the engine clearly falls back to its classical evaluator.
+The workflow `.github/workflows/train-marlin-v7.yml` trains the V7 NNUE using positions sampled from supplied high-rated human PGNs. Stockfish labels those positions with centipawn evaluations, and supplementary Stockfish teacher positions are mixed in.
 
-## Training V6
+The master-game positions shape the training distribution; Stockfish supplies consistent evaluation targets. This is not move imitation and does not prove GM strength. The workflow filters bot games, validates player rating/title metadata, validates model tensors, records dataset attribution and only then publishes V7 weights.
 
-The workflow `.github/workflows/train-marlin-v6.yml` trains a Marlin-owned NNUE model using Stockfish UCI evaluations as teacher labels. It generates a larger dataset, trains the compact 768x128x32x1 network, validates its structure and provenance metadata, then publishes the resulting weights to GitHub Pages.
-
-The network is an independent Marlin model; this project does not bundle Stockfish's network or copy Stockfish source code.
+Place authorised PGNs in `training/gm-games/` or pass an HTTPS PGN / PGN.zst URL to the workflow. Check the source's licence and preserve any required attribution. See `training/README-v7.md`. Lichess data collections have different licences: its rated-game/evaluation exports are CC0, while official broadcast PGNs are CC BY-SA 4.0.
 
 ## Arena
 
-The Arena compares MARLIN V6 against V5 with alternating colours. Both engines receive the same five-million-node cap per move; the default iterative-deepening setting is depth 3 and search continues until the node budget is exhausted. Opening-book and Syzygy tablebase moves bypass normal search. One game is not an Elo rating.
+Arena compares MARLIN V7 against V6 with alternating colours. Both receive the same five-million-node cap per move. Depth 3 is the displayed baseline; iterative deepening continues until the cap is reached. Opening-book and tablebase moves can bypass normal search. Save and inspect many games before drawing strength conclusions.
+
+## Legacy versions
+
+MARLIN V1 and V2 are deprecated and kept only for historical reference. V5 remains in the source for older comparisons; V6 is the current Arena baseline.
 
 ## Run
 
 Open the GitHub Pages site:
 
 https://oddossosososo.github.io/Marlin/
-
