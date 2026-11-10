@@ -13,7 +13,9 @@ self.onmessage = async (event) => {
     let move;
     let fallbackUsed = false;
     try {
-      move = await findPolicyMove(game, depth);
+      move = await findPolicyMove(game, depth, {
+        onProgress: details => self.postMessage({ requestId, type: "progress", ...details })
+      });
     } catch (policyError) {
       console.warn("MARLIN V7 policy unavailable; using V7 core search:", policyError);
       move = findSearchMove(game, depth);
