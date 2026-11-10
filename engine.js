@@ -1,15 +1,48 @@
 const VALUE = { p: 100, n: 320, b: 335, r: 500, q: 900, k: 20000 };
 const MATE = 100000;
+const MAX_PLY = 128;
 const table = new Map();
+const killers = Array.from({ length: MAX_PLY }, () => [null, null]);
+const history = Object.create(null);
+
+function moveKey(move) {
+  return move.from + move.to + (move.promotion || "");
+}
+
+function quietKey(move) {
+  return move.color + move.piece + move.to;
+}
+
+function isQuiet(move) {
+  return !move.captured && !move.promotion;
+}
 
 function evaluate(game) {
   const board = game.board();
+  const pawns = { w: [], b: [] };
+  const files = { w: Array(8).fill(0), b: Array(8).fill(0) };
+  const bishops = { w: 0, b: 0 };
   let score = 0;
   let nonPawnMaterial = 0;
-  for (const row of board) for (const piece of row) {
-    if (piece && piece.type !== "p" && piece.type !== "k") nonPawnMaterial += VALUE[piece.type];
+
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+    const p = board[r][c];
+    if (!p) continue;
+    if (p.type === "p") {
+      pawns[p.color].push({ r, c });
+      files[p.color][c]++;
+    } else if (p.type === "b") bishops[p.color]++;
+    if (p.type !== "p" && p.type !== "k") nonPawnMaterial += VALUE[p.type];
   }
+
   const endgame = nonPawnMaterial <= 2600;
+  const passed = (color, pawn) => {
+    const enemy = color === "w" ? "b" : "w";
+    return !pawns[enemy].some(ep =>
+      Math.abs(ep.c - pawn.c) <= 1 &&
+      (color === "w" ? ep.r < pawn.r : ep.r > pawn.r)
+    );
+  };
 
   for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
     const piece = board[r][c];
@@ -23,13 +56,34 @@ function evaluate(game) {
     if (type === "p") {
       positional = advance * 9 + center * 3;
       if ((piece.color === "w" && r === 1) || (piece.color === "b" && r === 6)) positional += 8;
-    } else if (type === "n") positional = center * 11;
-    else if (type === "b") positional = center * 7;
-    else if (type === "q") positional = center * 3;
-    else if (type === "k") positional = endgame ? center * 9 : -center * 7;
-
+      if (files[piece.color][c] > 1) positional -= 13 * (files[piece.color][c] - 1);
+      const isolated = !pawns[piece.color].some(p => p.c === c - 1 || p.c === c + 1);
+      if (isolated) positional -= 12;
+      if (passed(piece.color, { r, c })) positional += (endgame ? 18 : 10) + Math.max(0, advance) * 7;
+    } else if (type === "n") {
+      positional = center * 11;
+      if (r === 0 || r === 7 || c === 0 || c === 7) positional -= 12;
+    } else if (type === "b") positional = center * 7;
+    else if (type === "r") {
+      if (files[piece.color][c] === 0) positional += files[piece.color === "w" ? "b" : "w"][c] === 0 ? 12 : 20;
+      if ((piece.color === "w" && r === 1) || (piece.color === "b" && r === 6)) positional += 14;
+    } else if (type === "q") positional = center * 3;
+    else if (type === "k") {
+      positional = endgame ? center * 9 : -center * 7;
+      if (!endgame) {
+        const shieldRow = piece.color === "w" ? r - 1 : r + 1;
+        if (shieldRow >= 0 && shieldRow < 8) {
+          for (let fc = Math.max(0, c - 1); fc <= Math.min(7, c + 1); fc++) {
+            if (board[shieldRow][fc]?.type === "p" && board[shieldRow][fc].color === piece.color) positional += 11;
+          }
+        }
+      }
+    }
     score += sign * (VALUE[type] + positional);
   }
+
+  if (bishops.w >= 2) score += 28;
+  if (bishops.b >= 2) score -= 28;
   return game.turn() === "w" ? score : -score;
 }
 
@@ -39,15 +93,49 @@ function terminalScore(game, ply) {
   return null;
 }
 
-function moveScore(move, ttMove) {
-  if (ttMove && move.from === ttMove.from && move.to === ttMove.to && move.promotion === ttMove.promotion) return 1_000_000;
-  if (move.captured) return 100_000 + (VALUE[move.captured] || 0) * 10 - (VALUE[move.piece] || 0);
-  if (move.promotion) return 90_000 + (VALUE[move.promotion] || 0);
-  return 0;
+function scoreFromTT(score, ply) {
+  if (score > MATE - MAX_PLY) return score - ply;
+  if (score < -MATE + MAX_PLY) return score + ply;
+  return score;
 }
 
-function ordered(moves, ttMove) {
-  return moves.sort((a, b) => moveScore(b, ttMove) - moveScore(a, ttMove));
+function scoreToTT(score, ply) {
+  if (score > MATE - MAX_PLY) return score + ply;
+  if (score < -MATE + MAX_PLY) return score - ply;
+  return score;
+}
+
+function moveScore(move, ttMove, ply) {
+  if (ttMove && moveKey(move) === moveKey(ttMove)) return 2_000_000;
+  if (move.promotion) return 900_000 + (VALUE[move.promotion] || 0);
+  if (move.captured) {
+    const victim = VALUE[move.captured] || 0;
+    const attacker = VALUE[move.piece] || 0;
+    return 800_000 + victim * 10 - attacker;
+  }
+  const key = moveKey(move);
+  if (ply < MAX_PLY && killers[ply][0] === key) return 700_000;
+  if (ply < MAX_PLY && killers[ply][1] === key) return 690_000;
+  return history[quietKey(move)] || 0;
+}
+
+function ordered(moves, ttMove, ply) {
+  return moves.sort((a, b) => moveScore(b, ttMove, ply) - moveScore(a, ttMove, ply));
+}
+
+function rememberKiller(move, ply) {
+  if (ply >= MAX_PLY) return;
+  const key = moveKey(move);
+  if (killers[ply][0] === key) return;
+  killers[ply][1] = killers[ply][0];
+  killers[ply][0] = key;
+}
+
+function updateHistory(move, depth, bonus) {
+  const key = quietKey(move);
+  const old = history[key] || 0;
+  const change = bonus * depth * depth;
+  history[key] = Math.max(-20000, Math.min(20000, old + change - old * Math.abs(change) / 20000));
 }
 
 function quiescence(game, alpha, beta, ply, remaining = 5) {
@@ -64,7 +152,7 @@ function quiescence(game, alpha, beta, ply, remaining = 5) {
 
   let moves = game.moves({ verbose: true });
   if (!inCheck) moves = moves.filter(m => m.captured || m.promotion);
-  ordered(moves);
+  ordered(moves, null, ply);
 
   if (inCheck && moves.length === 0) return -MATE + ply;
   for (const move of moves) {
@@ -81,23 +169,52 @@ function negamax(game, depth, alpha, beta, ply) {
   const terminal = terminalScore(game, ply);
   if (terminal !== null) return terminal;
   if (depth <= 0) return quiescence(game, alpha, beta, ply);
+  if (ply >= MAX_PLY - 1) return evaluate(game);
 
   const originalAlpha = alpha;
   const key = game.fen();
   const cached = table.get(key);
-  let ttMove = cached?.move || null;
+  const ttMove = cached?.move || null;
   if (cached && cached.depth >= depth) {
-    if (cached.flag === "exact") return cached.score;
-    if (cached.flag === "lower" && cached.score >= beta) return cached.score;
-    if (cached.flag === "upper" && cached.score <= alpha) return cached.score;
+    const ttScore = scoreFromTT(cached.score, ply);
+    if (cached.flag === "exact") return ttScore;
+    if (cached.flag === "lower" && ttScore >= beta) return ttScore;
+    if (cached.flag === "upper" && ttScore <= alpha) return ttScore;
   }
+
+  const inCheck = game.isCheck();
+  const moves = ordered(game.moves({ verbose: true }), ttMove, ply);
+  if (!moves.length) return inCheck ? -MATE + ply : 0;
 
   let best = -Infinity;
   let bestMove = null;
-  const moves = ordered(game.moves({ verbose: true }), ttMove);
-  for (const move of moves) {
+  const quietTried = [];
+
+  for (let i = 0; i < moves.length; i++) {
+    const move = moves[i];
+    const quiet = isQuiet(move);
+    if (quiet) quietTried.push(move);
+
     game.move(move);
-    const score = -negamax(game, depth - 1, -beta, -alpha, ply + 1);
+    let score;
+
+    if (i === 0) {
+      score = -negamax(game, depth - 1, -beta, -alpha, ply + 1);
+    } else {
+      let reduction = 0;
+      if (!inCheck && depth >= 3 && i >= 3 && quiet && !game.isCheck()) {
+        reduction = Math.min(depth - 2, 1 + Math.floor(Math.log(depth) * Math.log(i + 1) / 2.2));
+      }
+
+      score = -negamax(game, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1);
+
+      if (reduction > 0 && score > alpha) {
+        score = -negamax(game, depth - 1, -alpha - 1, -alpha, ply + 1);
+      }
+      if (score > alpha && score < beta) {
+        score = -negamax(game, depth - 1, -beta, -alpha, ply + 1);
+      }
+    }
     game.undo();
 
     if (score > best) {
@@ -105,39 +222,63 @@ function negamax(game, depth, alpha, beta, ply) {
       bestMove = { from: move.from, to: move.to, promotion: move.promotion };
     }
     if (score > alpha) alpha = score;
-    if (alpha >= beta) break;
+
+    if (alpha >= beta) {
+      if (quiet) {
+        rememberKiller(move, ply);
+        updateHistory(move, depth, 1);
+        for (const tried of quietTried) {
+          if (moveKey(tried) !== moveKey(move)) updateHistory(tried, depth, -0.5);
+        }
+      }
+      break;
+    }
   }
 
   const flag = best <= originalAlpha ? "upper" : best >= beta ? "lower" : "exact";
-  table.set(key, { depth, score: best, flag, move: bestMove });
+  table.set(key, { depth, score: scoreToTT(best, ply), flag, move: bestMove });
   return best;
 }
 
 export function findBestMove(game, maxDepth = 4) {
   const moves = game.moves({ verbose: true });
   if (!moves.length) return null;
+
   table.clear();
+  for (const k of killers) { k[0] = null; k[1] = null; }
+  for (const key of Object.keys(history)) delete history[key];
 
   let bestMove = moves[0];
   let bestScore = -Infinity;
-  // Iterative deepening keeps the best completed result available at every depth.
+
   for (let depth = 1; depth <= maxDepth; depth++) {
     let iterationMove = bestMove;
     let iterationScore = -Infinity;
     let alpha = -Infinity;
     const beta = Infinity;
-    const rootMoves = ordered(game.moves({ verbose: true }), bestMove);
+    const rootMoves = ordered(game.moves({ verbose: true }), bestMove, 0);
 
-    for (const move of rootMoves) {
+    for (let i = 0; i < rootMoves.length; i++) {
+      const move = rootMoves[i];
       game.move(move);
-      const score = -negamax(game, depth - 1, -beta, -alpha, 1);
+      let score;
+      if (i === 0) {
+        score = -negamax(game, depth - 1, -beta, -alpha, 1);
+      } else {
+        score = -negamax(game, depth - 1, -alpha - 1, -alpha, 1);
+        if (score > alpha && score < beta) {
+          score = -negamax(game, depth - 1, -beta, -alpha, 1);
+        }
+      }
       game.undo();
+
       if (score > iterationScore) {
         iterationScore = score;
         iterationMove = move;
       }
       if (score > alpha) alpha = score;
     }
+
     bestMove = iterationMove;
     bestScore = iterationScore;
   }
