@@ -9,7 +9,14 @@
 </head>
 <body>
   <main class="app">
-    <header><div class="brand"><span class="mark">♞</span><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version">v0.1</span></header>
+    <header><div class="brand"><span class="mark">♞</span><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.2 · SEARCH V2</span></header>
+    <nav class="sidebar" aria-label="Main navigation">
+      <div class="side-label">ENGINE</div>
+      <button class="side-link active" id="play-nav">♟ <span>Play</span></button>
+      <button class="side-link" id="arena-nav">⚔ <span>Arena</span></button>
+      <div class="side-foot">MARLIN<br><small>ENGINE LAB</small></div>
+    </nav>
+    <div class="workspace">
     <section class="layout">
       <div class="board-wrap">
         <div class="board" id="board" role="grid" aria-label="Chess board"></div>
@@ -28,6 +35,29 @@
         <p class="note">You play White. Marlin plays Black. This is an experimental engine. Stronger search can take longer.</p>
       </aside>
     </section>
+    <section class="arena-panel" id="arena-panel" hidden>
+      <div class="arena-heading"><div><div class="section-title">ENGINE BATTLE</div><h2>V2 vs V1</h2><p class="pgn-help">Watch the upgraded Marlin engine play the preserved original against itself.</p></div><span class="arena-live" id="arena-live">READY</span></div>
+      <div class="arena-contenders">
+        <div class="contender newer"><small>WHITE · NEW</small><strong>Marlin V2</strong><span>Search V2 · PVS / LMR</span></div>
+        <div class="versus">VS</div>
+        <div class="contender older"><small>BLACK · OLD</small><strong>Marlin V1</strong><span>Original baseline engine</span></div>
+      </div>
+      <div class="arena-controls">
+        <label for="arena-depth">SEARCH DEPTH</label>
+        <select id="arena-depth"><option value="1">1 · Fast</option><option value="2">2 · Normal</option><option value="3" selected>3 · Balanced</option><option value="4">4 · Slow</option></select>
+        <label for="arena-speed">MOVE SPEED</label>
+        <select id="arena-speed"><option value="100">Fast</option><option value="450" selected>Normal</option><option value="1000">Slow</option></select>
+        <button id="arena-start" class="primary">Start match</button>
+        <button id="arena-stop">Stop</button>
+      </div>
+      <div class="arena-progress"><span id="arena-progress">No match played yet.</span><span id="arena-ply">0 plies</span></div>
+      <div class="arena-results">
+        <div><small>V2 WINS</small><strong id="v2-wins">0</strong></div>
+        <div><small>DRAWS</small><strong id="arena-draws">0</strong></div>
+        <div><small>V1 WINS</small><strong id="v1-wins">0</strong></div>
+      </div>
+      <p class="pgn-help">This is a local self-play test, not official Fishtest or an Elo rating. One match is shown on the board.</p>
+    </section>
     <section class="pgn-panel">
       <div class="section-title">PGN MAKER</div>
       <p class="pgn-help">Paste a game or use the current Marlin game. Choose which colour Marlin played.</p>
@@ -39,7 +69,7 @@
       <p id="pgn-status" class="pgn-help" aria-live="polite">Marlin will be tagged as GM in the selected colour.</p>
     </section>
     <footer>MARLIN · BUILT TO LEARN, SEARCH, AND IMPROVE</footer>
-  </main>
+    </div>
   <script type="module" src="app.js"></script>
 </body>
 </html>
