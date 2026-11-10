@@ -254,6 +254,9 @@ const analysisInput = document.querySelector("#analysis-pgn");
 const analysisButton = document.querySelector("#analyse-pgn");
 const analysisDepth = document.querySelector("#analysis-depth");
 const analysisResult = document.querySelector("#analysis-result");
+const analysisStopButton = document.querySelector("#stop-analysis");
+let activeAnalysisWorker = null;
+let analysisRequestId = 0;
 
 analysisButton.addEventListener("click", () => {
   const source = analysisInput.value.trim();
@@ -277,18 +280,29 @@ analysisButton.addEventListener("click", () => {
 
   const side = validationGame.turn() === "w" ? "White" : "Black";
   const worker = new Worker("./engine-worker.js", { type: "module" });
-  const requestId = Date.now();
+  const requestId = ++analysisRequestId;
+  activeAnalysisWorker = worker;
   analysisButton.disabled = true;
+  analysisStopButton.disabled = false;
   analysisResult.textContent = "Marlin is analysing the position…";
 
   const finish = (message) => {
     analysisButton.disabled = false;
+    analysisStopButton.disabled = true;
     analysisResult.textContent = message;
     worker.terminate();
+    if (activeAnalysisWorker === worker) activeAnalysisWorker = null;
   };
 
   worker.onmessage = (event) => {
     if (event.data.requestId !== requestId) return;
+    if (event.data.type === "progress") {
+      const depth = Number(event.data.depth || event.data.completedDepth || 0);
+      const nodes = Number(event.data.nodes || 0).toLocaleString();
+      const nps = Number(event.data.nps || 0).toLocaleString();
+      analysisResult.textContent = "MARLIN searching · depth " + depth + " · " + nodes + " nodes · " + nps + " NPS";
+      return;
+    }
     if (event.data.error) {
       finish("Analysis failed: " + event.data.error);
       return;
@@ -308,6 +322,15 @@ analysisButton.addEventListener("click", () => {
     pgn: source,
     depth: Number(analysisDepth.value)
   });
+});
+
+analysisStopButton.addEventListener("click", () => {
+  if (!activeAnalysisWorker) return;
+  activeAnalysisWorker.terminate();
+  activeAnalysisWorker = null;
+  analysisButton.disabled = false;
+  analysisStopButton.disabled = true;
+  analysisResult.textContent = "Analysis stopped.";
 });
 
 document.querySelector("#use-current-pgn").addEventListener("click", () => {
