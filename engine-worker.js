@@ -42,7 +42,8 @@ self.onmessage = async (event) => {
         from: legalMove.from,
         to: legalMove.to,
         promotion: legalMove.promotion || "q",
-        source: fallbackUsed ? "search-fallback" : (move.source || "search")
+        source: fallbackUsed ? "search-fallback" : (move.source || "search"),
+        san: legalMove.san
       },
       nnue: Boolean(initialised?.nnue)
     });
