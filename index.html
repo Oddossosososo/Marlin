@@ -19,8 +19,17 @@
     <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.8 · MARLIN V7 SEARCH</span></header>
     <section class="layout">
       <div class="board-wrap">
+        <div class="player-identity engine-player" id="black-player">
+          <img class="player-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="MARLIN engine logo">
+          <span class="player-copy"><small>BLACK</small><strong>MARLIN V7</strong><em>CHESS ENGINE</em></span>
+          <span class="player-badge">ENGINE</span>
+        </div>
         <div class="board" id="board" role="grid" aria-label="Chess board"></div>
-        <div class="coordinates"><span>WHITE</span><span>BLACK</span></div>
+        <div class="player-identity human-player" id="white-player">
+          <span class="human-avatar" aria-hidden="true">YOU</span>
+          <span class="player-copy"><small>WHITE</small><strong>YOU</strong><em>PLAYER</em></span>
+          <span class="player-badge">PLAYER</span>
+        </div>
       </div>
       <aside class="panel">
         <div class="status"><span class="dot"></span><div><small>GAME STATUS</small><strong id="status">Your move — White</strong></div></div>
