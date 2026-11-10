@@ -272,9 +272,10 @@ analysisButton.addEventListener("click", () => {
       return;
     }
     const move = event.data.move;
-    const sourceLabel = move.source === "opening-book" ? "opening book" :
+    const sourceLabel = move.source === "master-book" ? "Lichess master-game opening database" :
+      move.source === "curated-book" || move.source === "opening-book" ? "curated opening book" :
       move.source === "syzygy-7-man" ? "Syzygy tablebase" :
-      move.source === "search-fallback" ? "search fallback" : "engine search";
+      move.source === "search-fallback" ? "search fallback" : "V7 engine search";
     finish("Best next move for " + side + ": " + move.san +
       " (" + move.from + "–" + move.to + "). Source: " + sourceLabel + ".");
   };
@@ -478,9 +479,13 @@ async function startArenaMatch() {
       if (!move) break;
       const nodesEl = document.querySelector("#arena-nodes");
       if (nodesEl) {
-        nodesEl.textContent = result.nodes == null
-          ? (move.source === "opening-book" ? "Opening book · 0 search nodes" : "Syzygy · tablebase move")
-          : Number(result.nodes).toLocaleString() + " / 5,000,000 nodes";
+        if (move.source === "master-book" || move.source === "curated-book" || move.source === "opening-book") {
+          nodesEl.textContent = "Opening book · 0 search nodes";
+        } else if (move.source === "syzygy-7-man") {
+          nodesEl.textContent = "Syzygy · tablebase move";
+        } else {
+          nodesEl.textContent = Number(result.nodes || 0).toLocaleString() + " / 5,000,000 nodes";
+        }
       }
       game.move(move);
       render();
