@@ -25,7 +25,7 @@ Arena compares MARLIN V7 against V6 with alternating colours. Both receive the s
 
 ## Legacy versions
 
-MARLIN V1 and V2 are deprecated and kept only for historical reference. V5 remains in the source for older comparisons; V6 is the current Arena baseline.
+MARLIN V1, V2 and V3 are deprecated and retained only for historical reference, old-game reproduction and regression comparisons. V3 is preserved as `engine.js`; it is not used by active Play or Arena. V5 remains in the source for older comparisons; V6 is the current Arena baseline.
 
 ## Run
 
