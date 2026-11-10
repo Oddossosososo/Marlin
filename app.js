@@ -35,26 +35,26 @@ function updatePlayerIdentity() {
   const whiteName = inArena ? (v6IsBlack ? "MARLIN V7" : "MARLIN V6") : "YOU";
   const whiteIsHuman = !inArena;
 
-  const setEngine = (element, name, color) => {
-    element.classList.toggle("human-player", false);
+  const setEngine = (element, name) => {
+    element.classList.remove("human-player");
     element.classList.add("engine-player");
     element.innerHTML =
       '<img class="player-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="MARLIN engine logo">' +
-      '<span class="player-copy"><small>' + color + '</small><strong>' + name + '</strong><em>CHESS ENGINE</em></span>' +
-      '<span class="player-badge">ENGINE</span>';
+      '<span class="player-copy"><small>MARLIN ENGINE</small><strong>' + name + '</strong><em>CHESS ENGINE</em></span>' +
+      '<span class="player-badge">BOT</span>';
   };
   const setHuman = (element) => {
     element.classList.remove("engine-player");
     element.classList.add("human-player");
     element.innerHTML =
       '<span class="human-avatar" aria-hidden="true">YOU</span>' +
-      '<span class="player-copy"><small>WHITE</small><strong>YOU</strong><em>PLAYER</em></span>' +
-      '<span class="player-badge">PLAYER</span>';
+      '<span class="player-copy"><small>PLAYER</small><strong>YOU</strong><em>HUMAN PLAYER</em></span>' +
+      '<span class="player-badge">YOU</span>';
   };
 
-  setEngine(blackPlayer, blackName, "BLACK");
+  setEngine(blackPlayer, blackName);
   if (whiteIsHuman) setHuman(whitePlayer);
-  else setEngine(whitePlayer, whiteName, "WHITE");
+  else setEngine(whitePlayer, whiteName);
 }
 
 function statusText() {
