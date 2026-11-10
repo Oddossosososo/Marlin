@@ -7,6 +7,7 @@ self.onmessage = async (event) => {
   try {
     const game = new Chess();
     if (pgn) game.loadPgn(pgn);
+    const positionFen = game.fen();
 
     const initialised = await initialiseV7();
     let move;
@@ -17,6 +18,11 @@ self.onmessage = async (event) => {
       console.warn("MARLIN V7 policy unavailable; using V7 core search:", policyError);
       move = findSearchMove(game, depth);
       fallbackUsed = true;
+    }
+
+    if (game.fen() !== positionFen) {
+      self.postMessage({ requestId, error: "Position changed while V7 was thinking; stale move rejected." });
+      return;
     }
 
     if (!move) {
