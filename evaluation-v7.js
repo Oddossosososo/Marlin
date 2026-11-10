@@ -146,7 +146,7 @@ function evaluateHceV7(game) {
     } else if(p.type==="q") {
       positional+=centrality*3;
       // Avoid early queen adventures that lose tempi without a concrete gain.
-      const moveNo=Number(game.moveNumber?.()||1);
+      const moveNo=Number(game.fen().split(" ")[5]) || 1;
       if(moveNo<10 && ((color==="w" && (r<6||c!==3))||(color==="b" && (r>1||c!==3)))) positional-=5;
     } else if(p.type==="k") {
       if(endgame) positional+=centrality*10;
