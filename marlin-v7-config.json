@@ -1,0 +1,70 @@
+{
+  "engine": "MARLIN V7",
+  "status": {
+    "play_engine": "default",
+    "nnue_weights": "training-pipeline-created; not yet confirmed published",
+    "fallback_evaluation": "handcrafted positional evaluation"
+  },
+  "objectives": {
+    "target_rating": "GM-strength aspiration; not a measured rating",
+    "primary": [
+      "reduce tactical blunders and centipawn loss",
+      "prefer coordinated, active and structurally sound positions",
+      "use high-quality master opening statistics with a deterministic fallback",
+      "improve endgame precision with tablebase probes"
+    ],
+    "metrics": [
+      "ACPL",
+      "blunders per game",
+      "WDL against fixed reference engines",
+      "search nodes and completed depth",
+      "opening-specific performance"
+    ]
+  },
+  "evaluation": {
+    "mode": "NNUE when trained weights exist; otherwise HCE V7",
+    "hce_terms": [
+      "king safety and pawn shelter",
+      "doubled, isolated, backward and passed pawns",
+      "knight centralisation and supported outposts",
+      "bishop activity and bishop pair",
+      "rook open/semi-open files and seventh-rank activity",
+      "piece mobility and central-square control",
+      "endgame king activity and rook coordination"
+    ],
+    "structural_rules": "Soft evaluation penalties only; do not forbid a move when concrete tactics justify a structural concession."
+  },
+  "opening_policy": {
+    "master_source": "Lichess master-game opening explorer",
+    "local_fallback": "opening-policy-v6.js curated lines",
+    "white_first_moves": ["e4", "d4"],
+    "black_vs_e4": ["e5"],
+    "black_vs_d4": ["d5", "Nf6"],
+    "master_book_max_plies": 30,
+    "minimum_master_games_per_candidate": 5
+  },
+  "search": {
+    "node_budget_per_move": 5000000,
+    "displayed_start_depth": 3,
+    "iterative_deepening": true
+  },
+  "training": {
+    "positions": "sampled from human master PGNs and labelled by Stockfish",
+    "supplementary_data": "Stockfish teacher positions",
+    "architecture": "768x128x32x1",
+    "min_elo_default": 2400,
+    "exclude_bot_games": true,
+    "require_source_attribution": true
+  },
+  "validation": {
+    "required": [
+      "legal-move validation",
+      "tactical regression suite",
+      "master-PGN dataset quality checks",
+      "NNUE tensor and finite-value checks",
+      "paired V7-vs-V6 matches with colours swapped",
+      "fixed-reference-engine match sets"
+    ],
+    "rating_claim_policy": "Do not claim GM or 3500 Elo strength without statistically meaningful testing."
+  }
+}
