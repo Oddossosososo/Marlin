@@ -34,18 +34,26 @@ function countSearchNode() {
 }
 
 function zobristHash(game) {
-  const board = game.board();
+  // Parse FEN placement directly to avoid allocating a temporary 8x8 board.
   const fen = game.fen().split(" ");
+  const placement = fen[0];
   let hash = 0n;
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 8; c++) {
-      const piece = board[r][c];
-      if (!piece) continue;
-      const sideOffset = piece.color === "w" ? 0 : 6;
-      const pieceIndex = sideOffset + PIECE_INDEX[piece.type];
-      hash ^= Z_PIECES[r * 8 + c][pieceIndex];
+  let square = 0;
+
+  for (let i = 0; i < placement.length && square < 64; i++) {
+    const token = placement[i];
+    if (token === "/") continue;
+    if (token >= "1" && token <= "8") {
+      square += token.charCodeAt(0) - 48;
+      continue;
     }
+    const pieceType = PIECE_INDEX[token.toLowerCase()];
+    if (pieceType === undefined) continue;
+    const sideOffset = token === token.toUpperCase() ? 0 : 6;
+    hash ^= Z_PIECES[square][sideOffset + pieceType];
+    square++;
   }
+
   if (fen[1] === "b") hash ^= Z_SIDE;
   const castling = fen[2] || "-";
   if (castling.includes("K")) hash ^= Z_CASTLING[0];
@@ -240,7 +248,7 @@ function sideHasNullMoveMaterial(game) {
   return material >= VALUE.r;
 }
 
-function negamax(game, depth, alpha, beta, ply, allowNull = true) {
+function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove = null) {
   countSearchNode();
   const terminal = terminalScore(game, ply);
   if (terminal !== null) return terminal;
@@ -259,8 +267,6 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true) {
   }
 
   const inCheck = game.isCheck();
-  const priorMoves = game.history({ verbose: true });
-  const previousMove = priorMoves.length ? priorMoves[priorMoves.length - 1] : null;
   const counterKey = previousMove && isQuiet(previousMove) ? quietKey(previousMove) : null;
   const counterMove = counterKey ? counterMoves[counterKey] : null;
   // Null-move pruning: if passing the turn still scores above beta,
@@ -276,7 +282,8 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true) {
       -beta,
       -beta + 1,
       ply + 1,
-      false
+      false,
+      null
     );
     if (nullScore >= beta) return beta;
   }
@@ -297,20 +304,20 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true) {
     let score;
 
     if (i === 0) {
-      score = -negamax(game, depth - 1, -beta, -alpha, ply + 1);
+      score = -negamax(game, depth - 1, -beta, -alpha, ply + 1, true, move);
     } else {
       let reduction = 0;
       if (!inCheck && depth >= 3 && i >= 3 && quiet && !game.isCheck()) {
         reduction = Math.min(depth - 2, 1 + Math.floor(Math.log(depth) * Math.log(i + 1) / 2.2));
       }
 
-      score = -negamax(game, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1);
+      score = -negamax(game, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, true, move);
 
       if (reduction > 0 && score > alpha) {
-        score = -negamax(game, depth - 1, -alpha - 1, -alpha, ply + 1);
+        score = -negamax(game, depth - 1, -alpha - 1, -alpha, ply + 1, true, move);
       }
       if (score > alpha && score < beta) {
-        score = -negamax(game, depth - 1, -beta, -alpha, ply + 1);
+        score = -negamax(game, depth - 1, -beta, -alpha, ply + 1, true, move);
       }
     }
     game.undo();
@@ -374,11 +381,11 @@ export function findBestMove(game, maxDepth = 5) {
         game.move(move);
         let score;
         if (i === 0) {
-          score = -negamax(game, depth - 1, -beta, -rootAlpha, 1);
+          score = -negamax(game, depth - 1, -beta, -rootAlpha, 1, true, move);
         } else {
-          score = -negamax(game, depth - 1, -rootAlpha - 1, -rootAlpha, 1);
+          score = -negamax(game, depth - 1, -rootAlpha - 1, -rootAlpha, 1, true, move);
           if (score > rootAlpha && score < beta) {
-            score = -negamax(game, depth - 1, -beta, -rootAlpha, 1);
+            score = -negamax(game, depth - 1, -beta, -rootAlpha, 1, true, move);
           }
         }
         game.undo();
