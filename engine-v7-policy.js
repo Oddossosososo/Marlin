@@ -19,33 +19,63 @@ function repertoireAllows(game, move) {
   return true;
 }
 
-function chooseMasterMove(game, data) {
-  if (!Array.isArray(data?.moves) || !data.moves.length) return null;
-  const legal = game.moves({ verbose: true });
+function parseMasterUci(uci) {
+  // Lichess master explorer returns coordinate moves such as e2e4 or e7e8q.
+  // Reject malformed strings instead of interpreting partial coordinates.
+  if (typeof uci !== "string" || !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci)) return null;
+  return {
+    from: uci.slice(0, 2),
+    to: uci.slice(2, 4),
+    promotion: uci.length === 5 ? uci[4] : null
+  };
+}
+
+function findLegalMasterMove(game, uci, expectedFen = game.fen()) {
+  // Do not accept a cached/API move if the position changed while the request
+  // was in flight. Resolve the complete UCI against the active legal list.
+  if (game.fen() !== expectedFen) return null;
+  const parsed = parseMasterUci(uci);
+  if (!parsed) return null;
+
+  const matches = game.moves({ verbose: true }).filter(candidate =>
+    candidate.from === parsed.from &&
+    candidate.to === parsed.to &&
+    (candidate.promotion || null) === parsed.promotion
+  );
+  // Exactly one legal match is required. No partial-match or queen-default guess.
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function chooseMasterMove(game, data, expectedFen) {
+  if (game.fen() !== expectedFen || !Array.isArray(data?.moves) || !data.moves.length) return null;
   const side = game.turn();
   const candidates = [];
 
   for (const record of data.moves) {
-    const total = (Number(record.white) || 0) + (Number(record.draws) || 0) + (Number(record.black) || 0);
-    if (total < MASTER_MIN_GAMES || typeof record.uci !== "string") continue;
-    const move = legal.find(candidate =>
-      candidate.from === record.uci.slice(0, 2) &&
-      candidate.to === record.uci.slice(2, 4) &&
-      (!record.uci[4] || candidate.promotion === record.uci[4])
-    );
+    const white = Number(record?.white);
+    const draws = Number(record?.draws);
+    const black = Number(record?.black);
+    if (![white, draws, black].every(n => Number.isSafeInteger(n) && n >= 0)) continue;
+
+    const total = white + draws + black;
+    if (total < MASTER_MIN_GAMES || total > Number.MAX_SAFE_INTEGER) continue;
+
+    const move = findLegalMasterMove(game, record.uci, expectedFen);
     if (!move || !repertoireAllows(game, move)) continue;
 
-    const wins = side === "w" ? Number(record.white) || 0 : Number(record.black) || 0;
-    const draws = Number(record.draws) || 0;
+    const wins = side === "w" ? white : black;
     const expectedScore = (wins + 0.5 * draws + 0.5) / (total + 1);
-    // The small sample-size term favours established master practice over
-    // a single lucky result while retaining score-based move selection.
     const popularity = Math.log1p(total) / 1000;
-    candidates.push({ move, score: expectedScore + popularity, total });
+    candidates.push({
+      move,
+      uci: record.uci,
+      score: expectedScore + popularity,
+      total
+    });
   }
 
   candidates.sort((a, b) => b.score - a.score || b.total - a.total);
-  return candidates[0]?.move || null;
+  return candidates[0] || null;
 }
 
 async function fetchMasterBookMove(game, timeoutMs = 1100) {
@@ -53,7 +83,19 @@ async function fetchMasterBookMove(game, timeoutMs = 1100) {
   if (history.length >= BOOK_MAX_PLIES) return null;
 
   const fen = game.fen();
-  if (masterCache.has(fen)) return masterCache.get(fen);
+  if (masterCache.has(fen)) {
+    const cachedUci = await masterCache.get(fen);
+    if (typeof cachedUci !== "string") return null;
+    const cachedMove = findLegalMasterMove(game, cachedUci, fen);
+    if (!cachedMove) return null;
+    return {
+      from: cachedMove.from,
+      to: cachedMove.to,
+      promotion: cachedMove.promotion || "q",
+      san: cachedMove.san,
+      source: "master-book"
+    };
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -68,17 +110,9 @@ async function fetchMasterBookMove(game, timeoutMs = 1100) {
       });
       if (!response.ok) return null;
       const data = await response.json();
-      const selected = chooseMasterMove(game, data);
-      if (!selected) return null;
-      return {
-        from: selected.from,
-        to: selected.to,
-        promotion: selected.promotion || "q",
-        san: selected.san,
-        source: "master-book",
-        masterGames: data.moves?.find(entry => entry.uci ===
-          selected.from + selected.to + (selected.promotion || "")) || null
-      };
+      if (game.fen() !== fen) return null;
+      const selected = chooseMasterMove(game, data, fen);
+      return selected?.uci || null;
     } catch {
       return null;
     } finally {
@@ -86,11 +120,24 @@ async function fetchMasterBookMove(game, timeoutMs = 1100) {
     }
   })();
 
+  // Cache only a validated UCI string (or null), never a move object tied to
+  // a different Chess instance. Revalidate it against the legal list on read.
   masterCache.set(fen, request);
-  const result = await request;
-  masterCache.set(fen, result);
+  const selectedUci = await request;
+  masterCache.set(fen, selectedUci);
   if (masterCache.size > CACHE_LIMIT) masterCache.delete(masterCache.keys().next().value);
-  return result;
+
+  if (typeof selectedUci !== "string" || game.fen() !== fen) return null;
+  const selectedMove = findLegalMasterMove(game, selectedUci, fen);
+  if (!selectedMove) return null;
+
+  return {
+    from: selectedMove.from,
+    to: selectedMove.to,
+    promotion: selectedMove.promotion || "q",
+    san: selectedMove.san,
+    source: "master-book"
+  };
 }
 
 export async function findBestMove(game, maxDepth = 5, options = {}) {
