@@ -192,6 +192,22 @@ document.querySelector("#download-pgn").addEventListener("click", () => {
   URL.revokeObjectURL(url);
 });
 
+// Export the Arena's completed or stopped game so it can be analysed externally.
+document.querySelector("#arena-download-pgn").addEventListener("click", () => {
+  const pgn = game.pgn({ maxWidth: 100 });
+  if (!game.history().length) {
+    document.querySelector("#arena-progress").textContent = "No Arena moves to export yet.";
+    return;
+  }
+  const blob = new Blob([pgn + "\n"], { type: "application/x-chess-pgn;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "marlin-arena-game.pgn";
+  link.click();
+  URL.revokeObjectURL(url);
+});
+
 
 let arenaWorker = null;
 let arenaRequestId = 0;
