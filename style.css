@@ -13,3 +13,13 @@
 
 /* Marlin brand logo */
 .brand-logo{display:block;width:68px;height:68px;object-fit:contain;flex:0 0 68px;border-radius:12px;background:#fff;border:1px solid #dce5e8;padding:2px}
+
+/* Marlin identity across navigation, Arena, PGN tools and footer */
+.sidebar .side-foot{display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+.sidebar-logo{width:100%;max-width:112px;height:76px;object-fit:contain;object-position:left center;border-radius:9px;background:#fff;padding:3px}
+.arena-brand,.section-brand{display:flex;align-items:center;gap:12px}
+.section-logo{width:44px;height:44px;object-fit:contain;border-radius:9px;background:#fff;padding:2px;border:1px solid #dce5e8;flex:0 0 44px}
+.section-brand .section-title{margin:0}
+footer{display:flex;align-items:center;justify-content:center;gap:10px}
+.footer-logo{width:30px;height:30px;object-fit:contain;border-radius:6px;background:#fff;padding:1px}
+@media(max-width:760px){.sidebar .side-foot{display:none}.arena-brand{min-width:0}.section-logo{width:38px;height:38px;flex-basis:38px}}
