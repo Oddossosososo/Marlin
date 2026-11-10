@@ -68,8 +68,19 @@
     "default_arena_depth": 6,
     "default_analysis_depth": 6,
     "optimizations": [
+      "Use deterministic split 32-bit Zobrist streams combined into an exact 53-bit numeric transposition key instead of BigInt arithmetic",
+      "Score each generated move once before sorting to avoid repeated key and history calculations in the comparator",
+      "Retain the bounded transposition table, killer moves, history scores and counter-move hints across turns",
+      "Reuse the previous root transposition move as the next search's principal-variation ordering hint",
+      "Pass previous-move context through recursion instead of reconstructing the full move history at every node",
       "Parse FEN placement directly for transposition-table hashing instead of allocating a temporary board matrix",
       "Pass previous-move context through recursive search rather than rebuilding the full move history at every node"
+    ],
+    "metrics": [
+      "nodes",
+      "elapsed_ms",
+      "nodes_per_second",
+      "completed_depth"
     ]
   },
   "training": {
