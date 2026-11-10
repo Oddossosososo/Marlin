@@ -12,6 +12,12 @@ MARLIN is an experimental browser chess engine and training project.
 - V7 loads its own weights from `nnue/marlin-v7.nnue.json`. Until the V7 training workflow publishes that file, V7 uses its handcrafted evaluation.
 - Syzygy tablebase probing remains an optional online endgame helper.
 
+## Native engine foundation (experimental)
+
+The `feature/v8-native-search-foundation` branch expands the Rust/C++ core with tested bitboard attack primitives for knights, kings, pawns, rooks and bishops. Rust exposes these functions through a small FFI layer, and the native test workflow runs the Rust tests against the compiled C++ implementation.
+
+This is groundwork for a future native search engine, not yet a replacement for V7. The current GitHub Pages engine still searches in JavaScript; these C++ routines do not speed up browser depth searches until a complete search implementation is integrated and compiled to WebAssembly. V7 remains the production/default engine while native search correctness, browser integration and Arena performance are validated.
+
 ## V7 training
 
 The workflow `.github/workflows/train-marlin-v7.yml` trains the V7 NNUE using positions sampled from supplied high-rated human PGNs. Stockfish labels those positions with centipawn evaluations, and supplementary Stockfish teacher positions are mixed in.
