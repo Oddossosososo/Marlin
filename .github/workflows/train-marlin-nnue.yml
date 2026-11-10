@@ -6,7 +6,7 @@ on:
       games:
         description: "Stockfish self-play games"
         required: true
-        default: "20"
+        default: "50"
       depth:
         description: "Stockfish teacher search depth"
         required: true
