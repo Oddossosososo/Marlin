@@ -44,8 +44,8 @@
         <div class="contender older"><small>BLACK · BASELINE</small><strong>Marlin V5</strong><span>V5 · NNUE / Zobrist / TT / Alpha-beta / PVS / LMR / Null pruning</span></div>
       </div>
       <div class="arena-controls">
-        <label for="arena-depth">SEARCH DEPTH</label>
-        <select id="arena-depth"><option value="1">1 · Fast</option><option value="2">2 · Normal</option><option value="4">4 · Strong</option><option value="5" selected>5 · Stronger</option><option value="6">6 · Deep</option></select>
+        <label for="arena-depth">BASE SEARCH DEPTH · 5M NODE BUDGET</label>
+        <select id="arena-depth"><option value="1">1 · Fast</option><option value="2">2 · Normal</option><option value="3" selected>3 · Standard</option><option value="4">4 · Strong</option><option value="5">5 · Stronger</option><option value="6">6 · Deep</option></select>
         <label for="arena-speed">MOVE SPEED</label>
         <select id="arena-speed"><option value="100">Fast</option><option value="450" selected>Normal</option><option value="1000">Slow</option></select>
         <button id="arena-start" class="primary">Start match</button>
@@ -53,7 +53,7 @@
         <button id="arena-copy-pgn">Copy Arena PGN</button>
         <button id="arena-download-pgn">Download Arena PGN</button>
       </div>
-      <div class="arena-progress"><span id="arena-progress">No match played yet.</span><span id="arena-ply">0 plies</span></div>
+      <div class="arena-progress"><span id="arena-progress">No match played yet.</span><span id="arena-ply">0 plies</span><span id="arena-nodes">0 / 5,000,000 nodes</span></div>
       <div class="arena-results">
         <div><small>V6 WINS</small><strong id="v5-wins">0</strong></div>
         <div><small>DRAWS</small><strong id="arena-draws">0</strong></div>
