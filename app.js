@@ -11,6 +11,7 @@ const undoButton = document.querySelector("#undo");
 let selected = null;
 let legalTargets = [];
 let thinking = false;
+let engineStatus = "MARLIN READY";
 let arenaRunning = false;
 let arenaStopRequested = false;
 const arenaStats = { v6: 0, draws: 0, v5: 0 };
@@ -53,7 +54,7 @@ function render() {
   }
 
   statusEl.textContent = statusText();
-  thinkingEl.textContent = thinking ? "MARLIN SEARCHING…" : "MARLIN READY";
+  thinkingEl.textContent = thinking ? "MARLIN SEARCHING…" : engineStatus;
   const history = game.history();
   historyEl.innerHTML = "";
   if (!history.length) {
@@ -105,11 +106,13 @@ function makeEngineMove() {
       const depth = Number(depthEl.value);
       const nnue = await initialiseV6();
       const move = await findV6Move(game, depth);
-      thinkingEl.textContent = nnue.nnue ? "MARLIN V6 · NNUE ACTIVE" : "MARLIN V6 · NNUE NOT TRAINED (CLASSICAL EVAL)";
+      if (move?.source === "syzygy-7-man") engineStatus = "MARLIN V6 · SYZYGY 6/7-MAN";
+      else if (move?.source === "opening-book") engineStatus = "MARLIN V6 · OPENING BOOK";
+      else engineStatus = nnue.nnue ? "MARLIN V6 · NNUE ACTIVE" : "MARLIN V6 · CLASSICAL EVAL";
       if (move && !game.isGameOver()) game.move(move);
     } catch (error) {
       console.error("Marlin search error:", error);
-      thinkingEl.textContent = "ENGINE ERROR — see console";
+      engineStatus = "ENGINE ERROR — see console";
     } finally {
       thinking = false;
       render();
