@@ -1,5 +1,5 @@
 import { findBestMove as findSearchMove, initialiseV7 } from "./engine-v7.js";
-import { selectOpeningMove as selectLocalBookMove } from "./opening-policy-v6.js";
+import { selectOpeningMove as selectLocalBookMove } from "./opening-policy-v7.js";
 import { probeSyzygy } from "./syzygy-v6.js";
 
 export { initialiseV7 };
