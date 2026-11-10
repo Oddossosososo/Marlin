@@ -48,9 +48,13 @@ self.onmessage = async (event) => {
         promotion: legalMove.promotion || "q",
         source: fallbackUsed ? "search-fallback" : (move.source || "search"),
         san: legalMove.san,
-        nodes: move.nodes ?? 0
+        nodes: move.nodes ?? 0,
+        elapsedMs: move.elapsedMs ?? 0,
+        nps: move.nps ?? 0
       },
       nodes: move.nodes ?? 0,
+      elapsedMs: move.elapsedMs ?? 0,
+      nps: move.nps ?? 0,
       nnue: Boolean(initialised?.nnue)
     });
   } catch (error) {
