@@ -192,4 +192,79 @@ document.querySelector("#download-pgn").addEventListener("click", () => {
   URL.revokeObjectURL(url);
 });
 
+
+function setSection(section) {
+  const showArena = section === "arena";
+  arenaPanel.hidden = !showArena;
+  document.querySelector(".layout").hidden = showArena;
+  document.querySelector(".pgn-panel").hidden = showArena;
+  playNav.classList.toggle("active", !showArena);
+  arenaNav.classList.toggle("active", showArena);
+}
+playNav.addEventListener("click", () => setSection("play"));
+arenaNav.addEventListener("click", () => setSection("arena"));
+
+function updateArenaStats() {
+  document.querySelector("#v2-wins").textContent = arenaStats.v2;
+  document.querySelector("#arena-draws").textContent = arenaStats.draws;
+  document.querySelector("#v1-wins").textContent = arenaStats.v1;
+}
+function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+document.querySelector("#arena-start").addEventListener("click", async () => {
+  if (arenaRunning) return;
+  arenaRunning = true;
+  arenaStopRequested = false;
+  game.reset();
+  selected = null;
+  legalTargets = [];
+  const depth = Number(document.querySelector("#arena-depth").value);
+  const speed = Number(document.querySelector("#arena-speed").value);
+  const startButton = document.querySelector("#arena-start");
+  startButton.disabled = true;
+  document.querySelector("#arena-live").textContent = "LIVE";
+  document.querySelector("#arena-progress").textContent = "V2 (White) vs V1 (Black) — match running";
+  render();
+  try {
+    while (!game.isGameOver() && !arenaStopRequested && game.history().length < 240) {
+      const v2Turn = game.turn() === "w";
+      const move = v2Turn ? findBestMove(game, depth) : findV1Move(game, depth);
+      if (!move) break;
+      game.move(move);
+      render();
+      document.querySelector("#arena-ply").textContent = game.history().length + " plies";
+      const last = game.history({ verbose: true }).slice(-1)[0];
+      document.querySelector("#arena-progress").textContent =
+        (v2Turn ? "Marlin V2" : "Marlin V1") + " played " + (last?.san || move.from + "-" + move.to);
+      await wait(speed);
+    }
+    if (game.isCheckmate()) {
+      const winner = game.turn() === "w" ? "V1" : "V2";
+      if (winner === "V2") arenaStats.v2++; else arenaStats.v1++;
+      document.querySelector("#arena-live").textContent = winner + " WINS";
+      document.querySelector("#arena-progress").textContent = "Checkmate — Marlin " + winner + " wins.";
+    } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.history().length >= 240) {
+      arenaStats.draws++;
+      document.querySelector("#arena-live").textContent = "DRAW";
+      document.querySelector("#arena-progress").textContent = "Draw — no winner.";
+    } else {
+      document.querySelector("#arena-live").textContent = "STOPPED";
+      document.querySelector("#arena-progress").textContent = "Match stopped. Result not counted.";
+    }
+    updateArenaStats();
+  } catch (error) {
+    console.error("Arena match failed:", error);
+    document.querySelector("#arena-live").textContent = "ERROR";
+    document.querySelector("#arena-progress").textContent = "Match error: " + error.message;
+  } finally {
+    arenaRunning = false;
+    startButton.disabled = false;
+    render();
+  }
+});
+document.querySelector("#arena-stop").addEventListener("click", () => {
+  arenaStopRequested = true;
+  document.querySelector("#arena-live").textContent = "STOPPING";
+});
+
 render();
