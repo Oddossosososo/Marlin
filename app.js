@@ -431,6 +431,38 @@ function getArenaMove(version, depth) {
 
     worker.onmessage = (event) => {
       if (event.data.requestId !== requestId) return;
+
+      // Progress messages keep the Arena visibly active while depth-6 search
+      // is working. Only a final move or error settles this Promise.
+      if (event.data.type === "progress") {
+        const engineName = event.data.version === "v7" ? "MARLIN V7" : "MARLIN V6";
+        const nodes = Number(event.data.nodes || 0).toLocaleString();
+        const stage = event.data.stage || "searching";
+        const progressEl = document.querySelector("#arena-progress");
+        const nodesEl = document.querySelector("#arena-nodes");
+        const liveEl = document.querySelector("#arena-live");
+
+        if (liveEl) liveEl.textContent = engineName + " THINKING";
+        if (progressEl) {
+          if (stage === "initialising") {
+            progressEl.textContent = engineName + " initialising…";
+          } else if (stage === "checking-book") {
+            progressEl.textContent = engineName + " checking opening book / tablebase…";
+          } else if (stage === "depth-complete") {
+            progressEl.textContent = engineName + " completed depth " +
+              event.data.completedDepth + " / " + depth + " · " + nodes + " nodes";
+          } else if (stage === "complete") {
+            progressEl.textContent = engineName + " finished depth " +
+              event.data.completedDepth + " · " + nodes + " nodes";
+          } else {
+            progressEl.textContent = engineName + " searching depth " +
+              (event.data.depth || 1) + " / " + depth + " · " + nodes + " nodes";
+          }
+        }
+        if (nodesEl) nodesEl.textContent = nodes + " search nodes";
+        return;
+      }
+
       arenaPendingResolve = null;
       if (event.data.error) reject(new Error(event.data.error));
       else resolve(event.data);
