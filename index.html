@@ -16,7 +16,7 @@
       <button class="side-link" id="arena-nav">⚔ <span>Arena</span></button>
       <div class="side-foot"><img class="sidebar-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN</span><small>ENGINE LAB</small></div>
     </nav>
-    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.7 · MARLIN V6 SEARCH</span></header>
+    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.8 · MARLIN V7 SEARCH</span></header>
     <section class="layout">
       <div class="board-wrap">
         <div class="board" id="board" role="grid" aria-label="Chess board"></div>
@@ -32,16 +32,16 @@
         </div>
         <div class="thinking" id="thinking">MARLIN READY</div>
         <div class="moves"><div class="section-title">MOVE HISTORY</div><ol id="history"><li class="empty">Moves will appear here.</li></ol></div>
-        <p class="note">You play White. Marlin plays Black. This is an experimental engine. Stronger search can take longer.</p>
+        <p class="note">You play White. Marlin V7 plays Black. This is an experimental engine. Stronger search can take longer.</p>
       </aside>
     </section>
     <section class="arena-panel" id="arena-panel" hidden>
       <div class="arena-board-slot" id="arena-board-slot"></div>
-      <div class="arena-heading"><div class="arena-brand"><img class="section-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><div class="section-title">ENGINE BATTLE</div><h2>V6 vs V5</h2><p class="pgn-help">Compare the new V6 engine against V5 in self-play.</p></div></div><span class="arena-live" id="arena-live">READY</span></div>
+      <div class="arena-heading"><div class="arena-brand"><img class="section-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><div class="section-title">ENGINE BATTLE</div><h2>V7 vs V6</h2><p class="pgn-help">Compare the new V7 engine against V6 in self-play.</p></div></div><span class="arena-live" id="arena-live">READY</span></div>
       <div class="arena-contenders">
-        <div class="contender newer"><small>WHITE · NEW</small><strong>Marlin V6</strong><span>V6 · NNUE / SEE / deeper search / TT / PVS / LMR</span></div>
+        <div class="contender newer"><small>WHITE · NEW</small><strong>Marlin V7</strong><span>V7 · master-game book / HCE / NNUE / 5M node search</span></div>
         <div class="versus">VS</div>
-        <div class="contender older"><small>BLACK · BASELINE</small><strong>Marlin V5</strong><span>V5 · NNUE / Zobrist / TT / Alpha-beta / PVS / LMR / Null pruning</span></div>
+        <div class="contender older"><small>BLACK · BASELINE</small><strong>Marlin V6</strong><span>V6 · previous search, evaluation and NNUE baseline</span></div>
       </div>
       <div class="arena-controls">
         <label for="arena-depth">BASE SEARCH DEPTH · 5M NODE BUDGET</label>
@@ -55,11 +55,11 @@
       </div>
       <div class="arena-progress"><span id="arena-progress">No match played yet.</span><span id="arena-ply">0 plies</span><span id="arena-nodes">0 / 5,000,000 nodes</span></div>
       <div class="arena-results">
-        <div><small>V6 WINS</small><strong id="v5-wins">0</strong></div>
+        <div><small>V7 WINS</small><strong id="v7-wins">0</strong></div>
         <div><small>DRAWS</small><strong id="arena-draws">0</strong></div>
-        <div><small>V5 WINS</small><strong id="v3-wins">0</strong></div>
+        <div><small>V6 WINS</small><strong id="v6-wins">0</strong></div>
       </div>
-      <p class="pgn-help">Both engines receive the same five-million-node cap per move. Depth 3 is the default baseline; iterative deepening continues beyond depth 3 until the node budget is exhausted. Opening-book and Syzygy tablebase moves bypass normal search.</p>
+      <p class="pgn-help">V7 and V6 receive the same five-million-node cap per move. Depth 3 is the default baseline; iterative deepening continues beyond depth 3 until the node budget is exhausted. Master-book and Syzygy moves can bypass normal search.</p>
       <p class="pgn-help">This is a local self-play test, not official Fishtest or an Elo rating. One match is shown on the board.</p>
     </section>
     <section class="pgn-panel best-move-panel">
@@ -88,7 +88,7 @@
       <textarea id="pgn-output" rows="9" readonly spellcheck="false" placeholder="Your generated PGN will appear here."></textarea>
       <p id="pgn-status" class="pgn-help" aria-live="polite">Marlin will be tagged as GM in the selected colour.</p>
     </section>
-    <footer><img class="footer-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN · BUILT TO LEARN, SEARCH, AND IMPROVE</span></footer>
+    <footer><img class="footer-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN V7 · MASTER-GAME TRAINING / POSITIONAL SEARCH</span></footer>
     </div>
   <script type="module" src="app.js"></script>
 </body>
