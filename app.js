@@ -111,14 +111,6 @@ function cancelEngineRequest() {
   }
 }
 
-function getEngineMoveWithTimeout(depth, timeoutMs = 15000) {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error("Search timed out")), timeoutMs);
-  });
-  return Promise.race([getEngineMove(depth), timeout]).finally(() => clearTimeout(timer));
-}
-
 function getEngineMove(depth) {
   return new Promise((resolve, reject) => {
     if (!engineWorker) {
@@ -144,7 +136,8 @@ function getEngineMove(depth) {
     engineWorker.postMessage({
       requestId,
       pgn: game.pgn({ maxWidth: 1000 }),
-      depth
+      depth,
+      maxNodes: 5_000_000
     });
   });
 }
@@ -157,15 +150,7 @@ async function makeEngineMove() {
 
   try {
     const selectedDepth = Number(depthEl.value);
-    let result;
-    try {
-      result = await getEngineMoveWithTimeout(selectedDepth, 15000);
-    } catch (error) {
-      if (error.message !== "Search timed out" || requestedRevision !== positionRevision) throw error;
-      cancelEngineRequest();
-      engineStatus = "MARLIN V6 · SWITCHING TO QUICK SEARCH";
-      result = await getEngineMoveWithTimeout(Math.max(1, Math.min(selectedDepth - 2, 3)), 10000);
-    }
+    const result = await getEngineMove(selectedDepth);
     if (requestedRevision !== positionRevision || game.turn() !== "b" || game.isGameOver()) return;
 
     const candidate = result.move;
@@ -179,7 +164,7 @@ async function makeEngineMove() {
     if (candidate.source === "syzygy-7-man") engineStatus = "MARLIN V6 · SYZYGY 6/7-MAN";
     else if (candidate.source === "opening-book") engineStatus = "MARLIN V6 · OPENING BOOK";
     else if (candidate.source === "search-fallback") engineStatus = "MARLIN V6 · SEARCH FALLBACK";
-    else engineStatus = result.nnue ? "MARLIN V6 · NNUE ACTIVE" : "MARLIN V6 · CLASSICAL EVAL";
+    else engineStatus = (result.nnue ? "MARLIN V6 · NNUE ACTIVE" : "MARLIN V6 · CLASSICAL EVAL") + " · " + Number(result.nodes || 0).toLocaleString() + " NODES";
 
     game.move({
       from: legalMove.from,
@@ -447,7 +432,7 @@ function getArenaMove(version, depth) {
       if (event.data.requestId !== requestId) return;
       arenaPendingResolve = null;
       if (event.data.error) reject(new Error(event.data.error));
-      else resolve(event.data.move);
+      else resolve(event.data);
     };
 
     worker.onerror = (event) => {
@@ -461,7 +446,8 @@ function getArenaMove(version, depth) {
       requestId,
       pgn: game.pgn({ maxWidth: 1000 }),
       depth,
-      version
+      version,
+      maxNodes: 5_000_000
     });
   });
 }
@@ -485,9 +471,16 @@ async function startArenaMatch() {
   try {
     while (!game.isGameOver() && !arenaStopRequested && game.history().length < 240) {
       const v5Turn = game.turn() === v5Color;
-      const move = await getArenaMove(v5Turn ? "v5" : "v6", depth);
+      const result = await getArenaMove(v5Turn ? "v5" : "v6", depth);
       if (arenaStopRequested) break;
+      const move = result?.move;
       if (!move) break;
+      const nodesEl = document.querySelector("#arena-nodes");
+      if (nodesEl) {
+        nodesEl.textContent = result.nodes == null
+          ? (move.source === "opening-book" ? "Opening book · 0 search nodes" : "Syzygy · tablebase move")
+          : Number(result.nodes).toLocaleString() + " / 5,000,000 nodes";
+      }
       game.move(move);
       render();
       document.querySelector("#arena-ply").textContent = game.history().length + " plies";
