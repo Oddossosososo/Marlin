@@ -407,6 +407,7 @@ export function findBestMove(game, maxDepth = 4) {
           iterationMove = move;
         }
         if (score > rootAlpha) rootAlpha = score;
+        if (rootAlpha >= beta) break;
       }
 
       if (iterationScore <= alpha && alpha !== -Infinity) {
