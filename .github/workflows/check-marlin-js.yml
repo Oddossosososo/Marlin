@@ -1,0 +1,31 @@
+name: MARLIN JavaScript checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Check JavaScript module syntax
+        run: |
+          set -euo pipefail
+          for file in \
+            engine-v7.js \
+            engine-v6.js \
+            engine-v7-policy.js \
+            engine-v6-policy.js \
+            evaluation-v7.js \
+            nnue-v7.js \
+            engine-worker.js \
+            arena-worker.js \
+            app.js
+          do
+            echo "Checking $file"
+            node --input-type=module --check < "$file"
+          done
