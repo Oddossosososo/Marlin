@@ -172,6 +172,11 @@ function evaluateHceV7(game) {
     score+=sign*positional;
   }
 
+  // Material is the foundation of chess evaluation. Without this term,
+  // V7's handcrafted fallback could prefer positional compensation over
+  // winning or saving entire pieces.
+  score += material.w - material.b;
+
   if(bishops.w.length>=2) score+=34;
   if(bishops.b.length>=2) score-=34;
   score+=(mobility.w-mobility.b)*2;
