@@ -5,36 +5,49 @@ const VALUE = { p: 100, n: 320, b: 335, r: 500, q: 900, k: 20000 };
 const MATE = 100000;
 const MAX_PLY = 128;
 
-// Deterministic 64-bit Zobrist keys. chess.js owns move making/undoing, so
-// V7 calculates the key from the current board and FEN state at each node.
-const MASK64 = 0xffffffffffffffffn;
-let zobristSeed = 0x4d41524c494e5637n;
-function nextZobrist() {
-  zobristSeed = (zobristSeed + 0x9e3779b97f4a7c15n) & MASK64;
+// Deterministic split 32-bit Zobrist keys. Combining the two halves into
+// an exact 53-bit Number avoids BigInt arithmetic in every search node while
+// retaining a very large transposition-key space.
+let zobristSeed = 0x4d41524c;
+function nextZobrist32() {
+  zobristSeed = (zobristSeed + 0x9e3779b9) >>> 0;
   let z = zobristSeed;
-  z = ((z ^ (z >> 30n)) * 0xbf58476d1ce4e5b9n) & MASK64;
-  z = ((z ^ (z >> 27n)) * 0x94d049bb133111ebn) & MASK64;
-  return (z ^ (z >> 31n)) & MASK64;
+  z = Math.imul(z ^ (z >>> 16), 0x21f0aaad);
+  z = Math.imul(z ^ (z >>> 15), 0x735a2d97);
+  return (z ^ (z >>> 15)) >>> 0;
+}
+function nextZobristKey() {
+  return [nextZobrist32(), nextZobrist32()];
 }
 const PIECE_INDEX = { p: 0, n: 1, b: 2, r: 3, q: 4, k: 5 };
 const Z_PIECES = Array.from({ length: 64 }, () =>
-  Array.from({ length: 12 }, nextZobrist)
+  Array.from({ length: 12 }, nextZobristKey)
 );
-const Z_SIDE = nextZobrist();
-const Z_CASTLING = Array.from({ length: 4 }, nextZobrist);
-const Z_EP_FILE = Array.from({ length: 8 }, nextZobrist);
-const Z_HALFMOVE = Array.from({ length: 101 }, nextZobrist);
+const Z_SIDE = nextZobristKey();
+const Z_CASTLING = Array.from({ length: 4 }, nextZobristKey);
+const Z_EP_FILE = Array.from({ length: 8 }, nextZobristKey);
+const Z_HALFMOVE = Array.from({ length: 101 }, nextZobristKey);
 const TT_LIMIT = 262144;
 const table = new Map();
 
 let searchNodes = 0;
 let activeSearchDepth = 0;
 let searchProgressCallback = null;
+let searchStartedAt = 0;
+let nextProgressNode = 50000;
+let ttGeneration = 0;
 
 function reportSearchProgress(details = {}) {
   if (typeof searchProgressCallback !== "function") return;
   try {
-    searchProgressCallback({ depth: activeSearchDepth, nodes: searchNodes, ...details });
+    const elapsedMs = searchStartedAt ? Math.max(1, Date.now() - searchStartedAt) : 0;
+    searchProgressCallback({
+      depth: activeSearchDepth,
+      nodes: searchNodes,
+      elapsedMs,
+      nps: elapsedMs ? Math.round(searchNodes * 1000 / elapsedMs) : 0,
+      ...details
+    });
   } catch {
     // UI progress reporting must never interrupt the chess search.
   }
@@ -42,14 +55,17 @@ function reportSearchProgress(details = {}) {
 
 function countSearchNode() {
   searchNodes++;
-  if (searchNodes % 50000 === 0) reportSearchProgress({ stage: "searching" });
+  if (searchProgressCallback && searchNodes >= nextProgressNode) {
+    nextProgressNode += 50000;
+    reportSearchProgress({ stage: "searching" });
+  }
 }
 
 function zobristHash(game) {
-  // Parse FEN placement directly to avoid allocating a temporary 8x8 board.
   const fen = game.fen().split(" ");
   const placement = fen[0];
-  let hash = 0n;
+  let low = 0;
+  let high = 0;
   let square = 0;
 
   for (let i = 0; i < placement.length && square < 64; i++) {
@@ -62,33 +78,37 @@ function zobristHash(game) {
     const pieceType = PIECE_INDEX[token.toLowerCase()];
     if (pieceType === undefined) continue;
     const sideOffset = token === token.toUpperCase() ? 0 : 6;
-    hash ^= Z_PIECES[square][sideOffset + pieceType];
+    const key = Z_PIECES[square][sideOffset + pieceType];
+    low ^= key[0];
+    high ^= key[1];
     square++;
   }
 
-  if (fen[1] === "b") hash ^= Z_SIDE;
+  if (fen[1] === "b") { low ^= Z_SIDE[0]; high ^= Z_SIDE[1]; }
   const castling = fen[2] || "-";
-  if (castling.includes("K")) hash ^= Z_CASTLING[0];
-  if (castling.includes("Q")) hash ^= Z_CASTLING[1];
-  if (castling.includes("k")) hash ^= Z_CASTLING[2];
-  if (castling.includes("q")) hash ^= Z_CASTLING[3];
+  if (castling.includes("K")) { low ^= Z_CASTLING[0][0]; high ^= Z_CASTLING[0][1]; }
+  if (castling.includes("Q")) { low ^= Z_CASTLING[1][0]; high ^= Z_CASTLING[1][1]; }
+  if (castling.includes("k")) { low ^= Z_CASTLING[2][0]; high ^= Z_CASTLING[2][1]; }
+  if (castling.includes("q")) { low ^= Z_CASTLING[3][0]; high ^= Z_CASTLING[3][1]; }
   if (fen[3] && fen[3] !== "-") {
     const file = fen[3].charCodeAt(0) - 97;
-    if (file >= 0 && file < 8) hash ^= Z_EP_FILE[file];
+    if (file >= 0 && file < 8) { low ^= Z_EP_FILE[file][0]; high ^= Z_EP_FILE[file][1]; }
   }
   const halfmove = Math.min(100, Math.max(0, Number(fen[4]) || 0));
-  hash ^= Z_HALFMOVE[halfmove];
-  return hash;
+  low ^= Z_HALFMOVE[halfmove][0];
+  high ^= Z_HALFMOVE[halfmove][1];
+  return (high & 0x1fffff) * 4294967296 + (low >>> 0);
 }
 
 function storeTT(key, entry) {
   const previous = table.get(key);
-  if (previous && previous.depth > entry.depth) return;
+  if (previous && previous.depth > entry.depth &&
+      previous.generation === ttGeneration) return;
   if (!previous && table.size >= TT_LIMIT) {
     const oldestKey = table.keys().next().value;
     if (oldestKey !== undefined) table.delete(oldestKey);
   }
-  table.set(key, entry);
+  table.set(key, { ...entry, generation: ttGeneration });
 }
 
 const killers = Array.from({ length: MAX_PLY }, () => [null, null]);
@@ -188,7 +208,10 @@ function moveScore(move, ttMove, ply, counterMove) {
 }
 
 function ordered(moves, ttMove, ply, counterMove = null) {
-  return moves.sort((a, b) => moveScore(b, ttMove, ply, counterMove) - moveScore(a, ttMove, ply, counterMove));
+  for (let i = 0; i < moves.length; i++) {
+    moves[i]._marlinOrderScore = moveScore(moves[i], ttMove, ply, counterMove);
+  }
+  return moves.sort((a, b) => b._marlinOrderScore - a._marlinOrderScore);
 }
 
 function rememberKiller(move, ply) {
@@ -361,6 +384,9 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
 export function findBestMove(game, maxDepth = 6, options = {}) {
   searchNodes = 0;
   activeSearchDepth = 0;
+  searchStartedAt = Date.now();
+  nextProgressNode = 50000;
+  ttGeneration = (ttGeneration + 1) >>> 0 || 1;
   searchProgressCallback = typeof options?.onProgress === "function" ? options.onProgress : null;
   // Iterative deepening ends at the selected search depth. Nodes are counted
   // for diagnostics only and never stop the search early.
@@ -368,10 +394,7 @@ export function findBestMove(game, maxDepth = 6, options = {}) {
   const moves = game.moves({ verbose: true });
   if (!moves.length) return null;
 
-  table.clear();
-  for (const k of killers) { k[0] = null; k[1] = null; }
-  for (const key of Object.keys(history)) delete history[key];
-  for (const key of Object.keys(counterMoves)) delete counterMoves[key];
+  // Reuse the bounded transposition table and move-ordering heuristics across turns.
 
   let bestMove = moves[0];
   let bestScore = -Infinity;
@@ -432,7 +455,17 @@ export function findBestMove(game, maxDepth = 6, options = {}) {
     reportSearchProgress({ stage: "depth-complete", completedDepth: depth });
   }
 
-  const result = { from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion || "q", score: bestScore, nodes: searchNodes, depth: depthCeiling };
+  const elapsedMs = Math.max(1, Date.now() - searchStartedAt);
+  const result = {
+    from: bestMove.from,
+    to: bestMove.to,
+    promotion: bestMove.promotion || "q",
+    score: bestScore,
+    nodes: searchNodes,
+    depth: depthCeiling,
+    elapsedMs,
+    nps: Math.round(searchNodes * 1000 / elapsedMs)
+  };
   reportSearchProgress({ stage: "complete", completedDepth: depthCeiling });
   searchProgressCallback = null;
   return result;
