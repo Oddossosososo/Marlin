@@ -8,7 +8,7 @@ self.onmessage = async (event) => {
   try {
     const game = new Chess();
     if (pgn) game.loadPgn(pgn);
-    const findMove = version === "v4" ? findV4Move : version === "v3" ? findV3Move : findV2Move;
+    const findMove = version === "v5" ? findV4Move : version === "v3" ? findV3Move : findV2Move;
     if (version === "v4") await initialiseV4();
     const move = findMove(game, depth);
     self.postMessage({ requestId, move });
