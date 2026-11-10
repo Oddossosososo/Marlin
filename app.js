@@ -164,7 +164,9 @@ async function makeEngineMove() {
     else if (candidate.source === "master-book") engineStatus = "MARLIN V7 · MASTER OPENING BOOK";
     else if (candidate.source === "curated-book" || candidate.source === "opening-book") engineStatus = "MARLIN V7 · CURATED OPENING BOOK";
     else if (candidate.source === "search-fallback") engineStatus = "MARLIN V7 · SEARCH FALLBACK";
-    else engineStatus = (result.nnue ? "MARLIN V7 · NNUE ACTIVE" : "MARLIN V7 · HANDCRAFTED EVAL") + " · " + Number(result.nodes || 0).toLocaleString() + " NODES";
+    else engineStatus = (result.nnue ? "MARLIN V7 · NNUE ACTIVE" : "MARLIN V7 · HANDCRAFTED EVAL") +
+      " · " + Number(result.nodes || 0).toLocaleString() + " NODES · " +
+      Number(result.nps || 0).toLocaleString() + " NPS";
 
     game.move({
       from: legalMove.from,
