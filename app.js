@@ -437,6 +437,7 @@ function getArenaMove(version, depth) {
       if (event.data.type === "progress") {
         const engineName = event.data.version === "v7" ? "MARLIN V7" : "MARLIN V6";
         const nodes = Number(event.data.nodes || 0).toLocaleString();
+        const nps = Number(event.data.nps || 0).toLocaleString();
         const stage = event.data.stage || "searching";
         const progressEl = document.querySelector("#arena-progress");
         const nodesEl = document.querySelector("#arena-nodes");
@@ -450,16 +451,16 @@ function getArenaMove(version, depth) {
             progressEl.textContent = engineName + " checking opening book / tablebase…";
           } else if (stage === "depth-complete") {
             progressEl.textContent = engineName + " completed depth " +
-              event.data.completedDepth + " / " + depth + " · " + nodes + " nodes";
+              event.data.completedDepth + " / " + depth + " · " + nodes + " nodes · " + nps + " NPS";
           } else if (stage === "complete") {
             progressEl.textContent = engineName + " finished depth " +
-              event.data.completedDepth + " · " + nodes + " nodes";
+              event.data.completedDepth + " · " + nodes + " nodes · " + nps + " NPS";
           } else {
             progressEl.textContent = engineName + " searching depth " +
-              (event.data.depth || 1) + " / " + depth + " · " + nodes + " nodes";
+              (event.data.depth || 1) + " / " + depth + " · " + nodes + " nodes · " + nps + " NPS";
           }
         }
-        if (nodesEl) nodesEl.textContent = nodes + " search nodes";
+        if (nodesEl) nodesEl.textContent = nodes + " nodes · " + nps + " NPS";
         return;
       }
 
@@ -514,7 +515,9 @@ async function startArenaMatch() {
         } else if (move.source === "syzygy-7-man") {
           nodesEl.textContent = "Syzygy · tablebase move";
         } else {
-          nodesEl.textContent = Number(result.nodes || 0).toLocaleString() + " search nodes";
+          nodesEl.textContent = Number(result.nodes || 0).toLocaleString() +
+            " nodes · " + Number(result.nps || 0).toLocaleString() + " NPS · " +
+            Number(result.elapsedMs || 0).toLocaleString() + " ms";
         }
       }
       game.move(move);
