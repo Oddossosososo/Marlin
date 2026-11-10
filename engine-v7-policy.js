@@ -78,6 +78,17 @@ function chooseMasterMove(game, data, expectedFen) {
   return candidates[0] || null;
 }
 
+function isCapturingCandidate(game, candidate) {
+  if (!candidate?.from || !candidate?.to) return true;
+  const legal = game.moves({ verbose: true }).find(move =>
+    move.from === candidate.from &&
+    move.to === candidate.to &&
+    (move.promotion || null) === (candidate.promotion || null)
+  );
+  // Unknown or stale book/tablebase moves are never trusted.
+  return !legal || Boolean(legal.captured);
+}
+
 async function fetchMasterBookMove(game, timeoutMs = 1100) {
   const history = game.history();
   if (history.length >= BOOK_MAX_PLIES) return null;
@@ -142,13 +153,14 @@ async function fetchMasterBookMove(game, timeoutMs = 1100) {
 
 export async function findBestMove(game, maxDepth = 6, options = {}) {
   const tablebaseMove = await probeSyzygy(game);
-  if (tablebaseMove) return tablebaseMove;
+  if (tablebaseMove && !isCapturingCandidate(game, tablebaseMove)) return tablebaseMove;
 
   const masterMove = await fetchMasterBookMove(game);
-  if (masterMove) return masterMove;
+  if (masterMove && !isCapturingCandidate(game, masterMove)) return masterMove;
 
   const localBookMove = selectLocalBookMove(game);
-  if (localBookMove && repertoireAllows(game, localBookMove)) {
+  if (localBookMove && repertoireAllows(game, localBookMove) &&
+      !isCapturingCandidate(game, localBookMove)) {
     return {
       from: localBookMove.from,
       to: localBookMove.to,
