@@ -160,7 +160,7 @@ document.querySelector("#make-pgn").addEventListener("click", () => {
       whiteTitle,
       '[Black "' + blackName + '"]',
       blackTitle,
-      '[Result "' + imported.isCheckmate() ? (imported.turn() === "w" ? "0-1" : "1-0") : (imported.isDraw() ? "1/2-1/2" : "*") + '"]'
+      '[Result "' + (imported.isCheckmate() ? (imported.turn() === "w" ? "0-1" : "1-0") : (imported.isDraw() ? "1/2-1/2" : "*")) + '"]'
     ].filter(Boolean).join("\n");
     pgnOutput.value = headers + "\n\n" + body.replace(/^\[[^\n]*\]\s*\n/gm, "").trim();
     pgnStatus.textContent = "PGN created and validated. Marlin is " + (marlinIsWhite ? "White" : "Black") + " with the GM title tag.";
