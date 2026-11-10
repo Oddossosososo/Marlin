@@ -34,8 +34,46 @@ const Z_SIDE = nextZobristKey();
 const Z_CASTLING = Array.from({ length: 4 }, nextZobristKey);
 const Z_EP_FILE = Array.from({ length: 8 }, nextZobristKey);
 const Z_HALFMOVE = Array.from({ length: 101 }, nextZobristKey);
-const TT_LIMIT = 262144;
-const table = new Map();
+// Fixed-size direct-mapped transposition table. Typed arrays avoid
+// per-node Map lookups and entry-object allocations in the deepest hot path.
+const TT_SIZE = 1 << 18;
+const TT_MASK = TT_SIZE - 1;
+const TT_KEYS = new Float64Array(TT_SIZE);
+const TT_DEPTH = new Uint8Array(TT_SIZE);
+const TT_SCORE = new Int32Array(TT_SIZE);
+const TT_FLAG = new Uint8Array(TT_SIZE); // 1 exact, 2 lower, 3 upper
+const TT_FROM = new Int8Array(TT_SIZE);
+const TT_TO = new Int8Array(TT_SIZE);
+const TT_PROMOTION = new Uint8Array(TT_SIZE); // 0 none, 1 queen, 2 rook, 3 bishop, 4 knight
+const TT_GENERATIONS = new Uint32Array(TT_SIZE);
+const TT_VALID = new Uint8Array(TT_SIZE);
+TT_FROM.fill(-1);
+
+const PROMOTION_CODES = { q: 1, r: 2, b: 3, n: 4 };
+const PROMOTION_NAMES = [null, "q", "r", "b", "n"];
+
+function ttIndex(key) {
+  return Math.imul(key >>> 0, 0x9e3779b1) >>> 14;
+}
+
+function squareToIndex(square) {
+  return (square.charCodeAt(1) - 49) * 8 + square.charCodeAt(0) - 97;
+}
+
+function indexToSquare(index) {
+  return String.fromCharCode(97 + (index & 7), 49 + (index >>> 3));
+}
+
+function ttMoveAt(index) {
+  const from = TT_FROM[index];
+  if (from < 0) return null;
+  const promotionCode = TT_PROMOTION[index];
+  return {
+    from: indexToSquare(from),
+    to: indexToSquare(TT_TO[index]),
+    promotion: PROMOTION_NAMES[promotionCode] || null
+  };
+}
 
 let searchNodes = 0;
 let activeSearchDepth = 0;
@@ -130,14 +168,26 @@ function sideHasNullMoveMaterialFen(fen) {
 }
 
 function storeTT(key, entry) {
-  const previous = table.get(key);
-  if (previous && previous.depth > entry.depth &&
-      previous.generation === ttGeneration) return;
-  if (!previous && table.size >= TT_LIMIT) {
-    const oldestKey = table.keys().next().value;
-    if (oldestKey !== undefined) table.delete(oldestKey);
+  const index = ttIndex(key);
+  if (TT_VALID[index] && TT_KEYS[index] === key &&
+      TT_GENERATIONS[index] === ttGeneration &&
+      TT_DEPTH[index] > entry.depth) return;
+
+  TT_KEYS[index] = key;
+  TT_DEPTH[index] = Math.max(0, Math.min(255, entry.depth));
+  TT_SCORE[index] = Math.round(entry.score);
+  TT_FLAG[index] = entry.flag === "exact" ? 1 : entry.flag === "lower" ? 2 : 3;
+  if (entry.move) {
+    TT_FROM[index] = squareToIndex(entry.move.from);
+    TT_TO[index] = squareToIndex(entry.move.to);
+    TT_PROMOTION[index] = PROMOTION_CODES[entry.move.promotion] || 0;
+  } else {
+    TT_FROM[index] = -1;
+    TT_TO[index] = -1;
+    TT_PROMOTION[index] = 0;
   }
-  table.set(key, { ...entry, generation: ttGeneration });
+  TT_GENERATIONS[index] = ttGeneration;
+  TT_VALID[index] = 1;
 }
 
 const killers = Array.from({ length: MAX_PLY }, () => [null, null]);
@@ -169,12 +219,13 @@ export async function initialiseV7() {
 }
 export { hasNnueWeights };
 
-function terminalScore(game, ply) {
-  if (game.isCheckmate()) return -MATE + ply;
-  // chess.js isDraw() already covers stalemate, repetition, insufficient
-  // material and move-count draw rules, so avoid running them twice.
-  if (game.isDraw()) return 0;
-  return null;
+function isAutomaticDraw(game) {
+  // isDraw() also calls isStalemate(), which regenerates every legal move.
+  // Search generates that list itself and checks mate/stalemate from it, so
+  // test only the remaining draw rules here.
+  return game.isDrawByFiftyMoves() ||
+    game.isInsufficientMaterial() ||
+    game.isThreefoldRepetition();
 }
 
 function scoreFromTT(score, ply) {
@@ -197,28 +248,53 @@ function scoreToTT(score, ply) {
  */
 function staticExchange(game, move) {
   if (!move.captured) return 0;
-  let copy;
-  try { copy = new game.constructor(game.fen()); copy.move(move); }
-  catch { return 0; }
   const gains = [VALUE[move.captured] || 0];
   let depth = 0;
-  while (depth < 15) {
-    const targetPiece = copy.get(move.to);
-    if (!targetPiece) break;
-    const recaptures = copy.moves({ verbose: true })
-      .filter(candidate => candidate.to === move.to && candidate.captured)
-      .sort((a, b) => (VALUE[a.piece] || 0) - (VALUE[b.piece] || 0));
-    if (!recaptures.length) break;
-    const reply = recaptures[0];
-    depth++;
-    gains[depth] = (VALUE[targetPiece.type] || 0) - gains[depth - 1];
-    copy.move(reply);
+  let madeMoves = 0;
+
+  // Walk the exchange on the active position and undo it afterwards. This
+  // avoids constructing a new Chess instance and serialising a FEN for every
+  // candidate capture in quiescence.
+  try {
+    game.move(move);
+    madeMoves++;
+    while (depth < 15) {
+      const targetPiece = game.get(move.to);
+      if (!targetPiece) break;
+
+      const replies = game.moves({ verbose: true });
+      let leastValuable = null;
+      let leastValue = Infinity;
+      for (let i = 0; i < replies.length; i++) {
+        const candidate = replies[i];
+        if (candidate.to !== move.to || !candidate.captured) continue;
+        const value = VALUE[candidate.piece] || 0;
+        if (value < leastValue) {
+          leastValue = value;
+          leastValuable = candidate;
+        }
+      }
+      if (!leastValuable) break;
+
+      depth++;
+      gains[depth] = (VALUE[targetPiece.type] || 0) - gains[depth - 1];
+      game.move(leastValuable);
+      madeMoves++;
+    }
+
+    while (depth > 0) {
+      gains[depth - 1] = -Math.max(-gains[depth - 1], gains[depth]);
+      depth--;
+    }
+    return gains[0];
+  } catch {
+    return 0;
+  } finally {
+    while (madeMoves > 0) {
+      game.undo();
+      madeMoves--;
+    }
   }
-  while (depth > 0) {
-    gains[depth - 1] = -Math.max(-gains[depth - 1], gains[depth]);
-    depth--;
-  }
-  return gains[0];
 }
 
 function staticExchangeScore(move) { return move.captured ? (VALUE[move.captured] || 0) - (VALUE[move.piece] || 0) : 0; }
@@ -262,27 +338,27 @@ function updateHistory(move, depth, bonus) {
 
 function quiescence(game, alpha, beta, ply, remaining = 5) {
   countSearchNode();
-  const terminal = terminalScore(game, ply);
-  if (terminal !== null) return terminal;
-  const inCheck = game.isCheck();
-  let stand = inCheck ? -Infinity : evaluate(game);
+  if (isAutomaticDraw(game)) return 0;
 
+  const inCheck = game.isCheck();
+  let moves = game.moves({ verbose: true });
+  if (moves.length === 0) return inCheck ? -MATE + ply : 0;
+
+  let stand = inCheck ? -Infinity : evaluate(game);
   if (!inCheck) {
     if (stand >= beta) return beta;
     if (stand > alpha) alpha = stand;
     if (remaining <= 0) return stand;
+    moves = moves.filter(m => m.captured || m.promotion);
+    // Cheaply eliminate obviously losing non-checking captures with SEE.
+    // Checks and promotions remain searchable; exact SEE mutates/undoes the
+    // current position instead of cloning it.
+    moves = moves.filter(m =>
+      !m.captured || m.promotion || /[+#]$/.test(m.san || "") || staticExchange(game, m) >= 0
+    );
   }
 
-  let moves = game.moves({ verbose: true });
-  if (!inCheck) moves = moves.filter(m => m.captured || m.promotion);
-  // Delta/SEE pruning: avoid wasting quiescence nodes on obviously losing
-  // non-checking captures. Never prune evasions, promotions, or checking captures.
-  if (!inCheck) moves = moves.filter(m =>
-    !m.captured || m.promotion || /[+#]$/.test(m.san || "") || staticExchange(game, m) >= 0
-  );
   ordered(moves, null, ply);
-
-  if (inCheck && moves.length === 0) return -MATE + ply;
   for (const move of moves) {
     game.move(move);
     const score = -quiescence(game, -beta, -alpha, ply + 1, remaining - 1);
@@ -304,24 +380,27 @@ function makeNullPosition(game) {
 
 function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove = null) {
   countSearchNode();
-  const terminal = terminalScore(game, ply);
-  if (terminal !== null) return terminal;
   if (depth <= 0) return quiescence(game, alpha, beta, ply);
+  if (isAutomaticDraw(game)) return 0;
   if (ply >= MAX_PLY - 1) return evaluate(game);
 
   const originalAlpha = alpha;
   const fen = game.fen();
   const key = zobristHashFen(fen);
-  const cached = table.get(key);
-  const ttMove = cached?.move || null;
-  if (cached && cached.depth >= depth) {
-    const ttScore = scoreFromTT(cached.score, ply);
-    if (cached.flag === "exact") return ttScore;
-    if (cached.flag === "lower" && ttScore >= beta) return ttScore;
-    if (cached.flag === "upper" && ttScore <= alpha) return ttScore;
+  const ttSlot = ttIndex(key);
+  const ttHit = TT_VALID[ttSlot] && TT_KEYS[ttSlot] === key;
+  const ttMove = ttHit ? ttMoveAt(ttSlot) : null;
+  if (ttHit && TT_DEPTH[ttSlot] >= depth) {
+    const ttScore = scoreFromTT(TT_SCORE[ttSlot], ply);
+    const ttFlag = TT_FLAG[ttSlot];
+    if (ttFlag === 1) return ttScore;
+    if (ttFlag === 2 && ttScore >= beta) return ttScore;
+    if (ttFlag === 3 && ttScore <= alpha) return ttScore;
   }
 
   const inCheck = game.isCheck();
+  const legalMoves = game.moves({ verbose: true });
+  if (legalMoves.length === 0) return inCheck ? -MATE + ply : 0;
   const counterKey = previousMove && isQuiet(previousMove) ? quietKey(previousMove) : null;
   const counterMove = counterKey ? counterMoves[counterKey] : null;
   // Null-move pruning: if passing the turn still scores above beta,
@@ -343,7 +422,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
     if (nullScore >= beta) return beta;
   }
 
-  const moves = ordered(game.moves({ verbose: true }), ttMove, ply, counterMove);
+  const moves = ordered(legalMoves, ttMove, ply, counterMove);
   if (!moves.length) return inCheck ? -MATE + ply : 0;
 
   let best = -Infinity;
@@ -416,7 +495,10 @@ export function findBestMove(game, maxDepth = 6, options = {}) {
 
   // Reuse the bounded transposition table and move-ordering heuristics across turns.
   const rootKey = zobristHash(game);
-  const previousRootMove = table.get(rootKey)?.move;
+  const rootSlot = ttIndex(rootKey);
+  const previousRootMove = TT_VALID[rootSlot] && TT_KEYS[rootSlot] === rootKey
+    ? ttMoveAt(rootSlot)
+    : null;
   const previousRootMoveKey = previousRootMove ? moveKey(previousRootMove) : null;
   let bestMove = previousRootMoveKey
     ? (moves.find(move => moveKey(move) === previousRootMoveKey) || moves[0])
