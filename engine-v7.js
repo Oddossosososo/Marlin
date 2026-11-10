@@ -95,6 +95,15 @@ function isQuiet(move) {
   return !move.captured && !move.promotion;
 }
 
+// Experimental V7 capture penalty. This changes move scoring, not the rules:
+// the capturing piece stays on the board but pays half its own centipawn value.
+// A king capture pays the full king value.
+function capturePenalty(move) {
+  if (!move?.captured) return 0;
+  if (move.piece === "k") return VALUE.k;
+  return Math.ceil((VALUE[move.piece] || 0) / 2);
+}
+
 function evaluate(game) {
   const neural = evaluateNnue(game);
   return neural === null ? evaluateHceV7(game) : neural;
@@ -219,7 +228,7 @@ function quiescence(game, alpha, beta, ply, remaining = 5) {
   if (inCheck && moves.length === 0) return -MATE + ply;
   for (const move of moves) {
     game.move(move);
-    const score = -quiescence(game, -beta, -alpha, ply + 1, remaining - 1);
+    const score = -quiescence(game, -beta, -alpha, ply + 1, remaining - 1) - capturePenalty(move);
     game.undo();
     if (score >= beta) return beta;
     if (score > alpha) alpha = score;
@@ -298,26 +307,27 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
   for (let i = 0; i < moves.length; i++) {
     const move = moves[i];
     const quiet = isQuiet(move);
+    const penalty = capturePenalty(move);
     if (quiet) quietTried.push(move);
 
     game.move(move);
     let score;
 
     if (i === 0) {
-      score = -negamax(game, depth - 1, -beta, -alpha, ply + 1, true, move);
+      score = -negamax(game, depth - 1, -beta, -alpha, ply + 1, true, move) - penalty;
     } else {
       let reduction = 0;
       if (!inCheck && depth >= 3 && i >= 3 && quiet && !game.isCheck()) {
         reduction = Math.min(depth - 2, 1 + Math.floor(Math.log(depth) * Math.log(i + 1) / 2.2));
       }
 
-      score = -negamax(game, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, true, move);
+      score = -negamax(game, depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, true, move) - penalty;
 
       if (reduction > 0 && score > alpha) {
-        score = -negamax(game, depth - 1, -alpha - 1, -alpha, ply + 1, true, move);
+        score = -negamax(game, depth - 1, -alpha - 1, -alpha, ply + 1, true, move) - penalty;
       }
       if (score > alpha && score < beta) {
-        score = -negamax(game, depth - 1, -beta, -alpha, ply + 1, true, move);
+        score = -negamax(game, depth - 1, -beta, -alpha, ply + 1, true, move) - penalty;
       }
     }
     game.undo();
@@ -378,14 +388,15 @@ export function findBestMove(game, maxDepth = 6) {
 
       for (let i = 0; i < rootMoves.length; i++) {
         const move = rootMoves[i];
+        const penalty = capturePenalty(move);
         game.move(move);
         let score;
         if (i === 0) {
-          score = -negamax(game, depth - 1, -beta, -rootAlpha, 1, true, move);
+          score = -negamax(game, depth - 1, -beta, -rootAlpha, 1, true, move) - penalty;
         } else {
-          score = -negamax(game, depth - 1, -rootAlpha - 1, -rootAlpha, 1, true, move);
+          score = -negamax(game, depth - 1, -rootAlpha - 1, -rootAlpha, 1, true, move) - penalty;
           if (score > rootAlpha && score < beta) {
-            score = -negamax(game, depth - 1, -beta, -rootAlpha, 1, true, move);
+            score = -negamax(game, depth - 1, -beta, -rootAlpha, 1, true, move) - penalty;
           }
         }
         game.undo();
