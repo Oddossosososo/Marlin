@@ -210,7 +210,7 @@ function setSection(section) {
   } else {
     layout.insertBefore(boardWrap, sidePanel);
   }
-  layout.hidden = false;
+  layout.hidden = showArena;
   playNav.classList.toggle("active", !showArena);
   arenaNav.classList.toggle("active", showArena);
   if (!showArena) arenaAutoStarted = false;
