@@ -1,0 +1,59 @@
+name: Train MARLIN V4 NNUE
+
+on:
+  workflow_dispatch:
+    inputs:
+      games:
+        description: "Stockfish self-play games"
+        required: true
+        default: "20"
+      depth:
+        description: "Stockfish teacher search depth"
+        required: true
+        default: "8"
+      epochs:
+        description: "Training epochs"
+        required: true
+        default: "15"
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Stockfish
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y stockfish
+          stockfish --version
+      - name: Install training dependencies
+        run: python -m pip install -r training/requirements.txt
+      - name: Generate Stockfish teacher dataset
+        run: |
+          STOCKFISH_BIN="$(command -v stockfish)"
+          python training/generate_dataset.py \
+            --stockfish "$STOCKFISH_BIN" \
+            --games "${{ inputs.games }}" \
+            --depth "${{ inputs.depth }}" \
+            --sample-every 2 \
+            --out training/data/stockfish.jsonl
+      - name: Train MARLIN NNUE
+        run: |
+          python training/train_nnue.py \
+            --data training/data/stockfish.jsonl \
+            --epochs "${{ inputs.epochs }}" \
+            --out nnue/marlin-v4.nnue.json
+      - name: Upload trained weights and dataset report
+        uses: actions/upload-artifact@v4
+        with:
+          name: marlin-v4-nnue
+          path: |
+            nnue/marlin-v4.nnue.json
+            training/data/stockfish.jsonl
+          if-no-files-found: error
+          retention-days: 30
