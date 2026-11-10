@@ -80,9 +80,9 @@ V4 is developed on `marlin-v4-nnue`, leaving `main`, V2 and V3 untouched.
 
 The repository contains the trainer, but trained weights are not checked in until generated. This avoids pretending random weights are a trained network.
 
-1. Install Python dependencies: `pip install python-chess numpy torch`.
+1. Install Python dependencies: `pip install -r training/requirements.txt`.
 2. Collect Stockfish-labelled positions:
-   `python training/collect_stockfish.py --stockfish /path/to/stockfish --positions 30000 --depth 10`
+   `python training/generate_dataset.py --stockfish /path/to/stockfish --games 1000 --depth 12 --sample-every 2`
 3. Train and export:
    `python training/train_nnue.py --data training/data/stockfish.jsonl --out nnue/marlin-v4.nnue.json --epochs 20`
 
