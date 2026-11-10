@@ -362,7 +362,6 @@ export function findBestMove(game, maxDepth = 5) {
     let iterationMove = bestMove;
     let iterationScore = -Infinity;
 
-    let iterationCompleted = true;
     // Aspiration windows: retry with a wider window after fail-low/high.
     while (true) {
       iterationMove = bestMove;
@@ -392,7 +391,6 @@ export function findBestMove(game, maxDepth = 5) {
         if (rootAlpha >= beta) break;
       }
 
-      if (!iterationCompleted) break;
       if (iterationScore <= alpha && alpha !== -Infinity) {
         window *= 2;
         alpha = iterationScore - window;
@@ -406,7 +404,6 @@ export function findBestMove(game, maxDepth = 5) {
       break;
     }
 
-    if (!iterationCompleted) break;
     bestMove = iterationMove;
     bestScore = iterationScore;
   }
