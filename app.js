@@ -389,7 +389,25 @@ function getArenaPgn() {
     document.querySelector("#arena-progress").textContent = "No Arena moves yet. Start or finish a match first.";
     return "";
   }
-  return addMarlinPgnBranding(game.pgn({ maxWidth: 100 }), "Marlin V7 vs V6 Arena") + "\n";
+  const raw = game.pgn({ maxWidth: 100 });
+  const v6IsWhite = lastArenaV6Color === "w";
+  const whiteName = v6IsWhite ? "Marlin V6" : "Marlin V7";
+  const blackName = v6IsWhite ? "Marlin V7" : "Marlin V6";
+  const result = game.isCheckmate()
+    ? (game.turn() === "w" ? "0-1" : "1-0")
+    : (game.isDraw() || game.isStalemate() || game.history().length >= 240 ? "1/2-1/2" : "*");
+  let body = raw.replace(/^\[[^\n]*\]\s*\n/gm, "").trim();
+  const headers = [
+    '[Event "Marlin V7 vs V6 Arena"]',
+    '[Site "https://oddossosososo.github.io/Marlin/"]',
+    '[Annotator "Marlin Chess Engine"]',
+    '[White "' + whiteName + '"]',
+    '[WhiteTitle "GM"]',
+    '[Black "' + blackName + '"]',
+    '[BlackTitle "GM"]',
+    '[Result "' + result + '"]'
+  ].join("\n");
+  return headers + "\n\n" + body + "\n";
 }
 
 document.querySelector("#arena-copy-pgn").addEventListener("click", async () => {
@@ -419,6 +437,7 @@ let arenaWorker = null;
 let arenaRequestId = 0;
 let arenaAutoStarted = false;
 let arenaMatchCount = 0;
+let lastArenaV6Color = "b";
 
 function setSection(section) {
   const showArena = section === "arena";
@@ -544,6 +563,7 @@ async function startArenaMatch() {
   startButton.disabled = true;
   document.querySelector("#arena-live").textContent = "LIVE";
   const v6Color = arenaMatchCount % 2 === 0 ? "b" : "w";
+  lastArenaV6Color = v6Color;
   document.querySelector("#arena-progress").textContent = "V7 vs V6 — " + (v6Color === "b" ? "V7 White" : "V6 White") + " — match running";
   document.querySelector("#arena-ply").textContent = "0 plies";
   render();
