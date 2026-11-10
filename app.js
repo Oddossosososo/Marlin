@@ -1,6 +1,6 @@
 import { Chess } from "https://esm.sh/chess.js@1.4.0";
 import { findBestMove as findV3Move } from "./engine.js";
-import { findBestMove as findV5Move, initialiseV5 } from "./engine-v5.js";
+import { findBestMove as findV6Move, initialiseV6 } from "./engine-v6.js";
 import { findBestMove as findV1Move } from "./engine-v1.js";
 
 const game = new Chess();
@@ -15,7 +15,7 @@ let legalTargets = [];
 let thinking = false;
 let arenaRunning = false;
 let arenaStopRequested = false;
-const arenaStats = { v5: 0, draws: 0, v3: 0 };
+const arenaStats = { v6: 0, draws: 0, v5: 0 };
 const playNav = document.querySelector("#play-nav");
 const arenaNav = document.querySelector("#arena-nav");
 const arenaPanel = document.querySelector("#arena-panel");
@@ -105,9 +105,9 @@ function makeEngineMove() {
   setTimeout(async () => {
     try {
       const depth = Number(depthEl.value);
-      const nnue = await initialiseV5();
-      const move = findV5Move(game, depth);
-      thinkingEl.textContent = nnue.nnue ? "MARLIN V5 · NNUE ACTIVE" : "MARLIN V5 · NNUE NOT TRAINED (CLASSICAL EVAL)";
+      const nnue = await initialiseV6();
+      const move = findV6Move(game, depth);
+      thinkingEl.textContent = nnue.nnue ? "MARLIN V6 · NNUE ACTIVE" : "MARLIN V6 · NNUE NOT TRAINED (CLASSICAL EVAL)";
       if (move && !game.isGameOver()) game.move(move);
     } catch (error) {
       console.error("Marlin search error:", error);
@@ -214,7 +214,7 @@ function getArenaPgn() {
     document.querySelector("#arena-progress").textContent = "No Arena moves yet. Start or finish a match first.";
     return "";
   }
-  return addMarlinPgnBranding(game.pgn({ maxWidth: 100 }), "Marlin V5 vs V3 Arena") + "\n";
+  return addMarlinPgnBranding(game.pgn({ maxWidth: 100 }), "Marlin V6 vs V5 Arena") + "\n";
 }
 
 document.querySelector("#arena-copy-pgn").addEventListener("click", async () => {
@@ -271,9 +271,9 @@ playNav.addEventListener("click", () => setSection("play"));
 arenaNav.addEventListener("click", () => setSection("arena"));
 
 function updateArenaStats() {
-  document.querySelector("#v5-wins").textContent = arenaStats.v5;
+  document.querySelector("#v5-wins").textContent = arenaStats.v6;
   document.querySelector("#arena-draws").textContent = arenaStats.draws;
-  document.querySelector("#v3-wins").textContent = arenaStats.v3;
+  document.querySelector("#v3-wins").textContent = arenaStats.v5;
 }
 function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
@@ -335,14 +335,14 @@ async function startArenaMatch() {
   const startButton = document.querySelector("#arena-start");
   startButton.disabled = true;
   document.querySelector("#arena-live").textContent = "LIVE";
-  const v3Color = arenaMatchCount % 2 === 0 ? "b" : "w";
-  document.querySelector("#arena-progress").textContent = "V5 vs V3 — " + (v3Color === "b" ? "V5 White" : "V3 White") + " — match running";
+  const v5Color = arenaMatchCount % 2 === 0 ? "b" : "w";
+  document.querySelector("#arena-progress").textContent = "V5 vs V3 — " + (v3Color === "b" ? "V6 White" : "V5 White") + " — match running";
   document.querySelector("#arena-ply").textContent = "0 plies";
   render();
   try {
     while (!game.isGameOver() && !arenaStopRequested && game.history().length < 240) {
-      const v3Turn = game.turn() === v3Color;
-      const move = await getArenaMove(v3Turn ? "v3" : "v5", depth);
+      const v5Turn = game.turn() === v5Color;
+      const move = await getArenaMove(v5Turn ? "v5" : "v6", depth);
       if (arenaStopRequested) break;
       if (!move) break;
       game.move(move);
@@ -350,13 +350,13 @@ async function startArenaMatch() {
       document.querySelector("#arena-ply").textContent = game.history().length + " plies";
       const last = game.history({ verbose: true }).slice(-1)[0];
       document.querySelector("#arena-progress").textContent =
-        (v3Turn ? "Marlin V3" : "Marlin V5") + " played " + (last?.san || move.from + "-" + move.to);
+        (v5Turn ? "Marlin V5" : "Marlin V6") + " played " + (last?.san || move.from + "-" + move.to);
       await wait(speed);
     }
     if (game.isCheckmate()) {
       const winnerColor = game.turn() === "w" ? "b" : "w";
-      const winner = winnerColor === v3Color ? "V3" : "V5";
-      if (winner === "V5") arenaStats.v5++; else arenaStats.v3++;
+      const winner = winnerColor === v5Color ? "V5" : "V6";
+      if (winner === "V6") arenaStats.v6++; else arenaStats.v5++;
       document.querySelector("#arena-live").textContent = winner + " WINS";
       document.querySelector("#arena-progress").textContent = "Checkmate — Marlin " + winner + " wins.";
     } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.history().length >= 240) {
