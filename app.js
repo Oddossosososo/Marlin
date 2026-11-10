@@ -14,7 +14,7 @@ let legalTargets = [];
 let thinking = false;
 let arenaRunning = false;
 let arenaStopRequested = false;
-const arenaStats = { v2: 0, draws: 0, v1: 0 };
+const arenaStats = { v3: 0, draws: 0, v2: 0 };
 const playNav = document.querySelector("#play-nav");
 const arenaNav = document.querySelector("#arena-nav");
 const arenaPanel = document.querySelector("#arena-panel");
@@ -252,9 +252,9 @@ playNav.addEventListener("click", () => setSection("play"));
 arenaNav.addEventListener("click", () => setSection("arena"));
 
 function updateArenaStats() {
-  document.querySelector("#v2-wins").textContent = arenaStats.v2;
+  document.querySelector("#v3-wins").textContent = arenaStats.v3;
   document.querySelector("#arena-draws").textContent = arenaStats.draws;
-  document.querySelector("#v1-wins").textContent = arenaStats.v1;
+  document.querySelector("#v2-wins").textContent = arenaStats.v2;
 }
 function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
@@ -317,13 +317,13 @@ async function startArenaMatch() {
   const startButton = document.querySelector("#arena-start");
   startButton.disabled = true;
   document.querySelector("#arena-live").textContent = "LIVE";
-  document.querySelector("#arena-progress").textContent = "V2 (White) vs V1 (Black) — match running";
+  document.querySelector("#arena-progress").textContent = "V3 (White) vs V2 (Black) — match running";
   document.querySelector("#arena-ply").textContent = "0 plies";
   render();
   try {
     while (!game.isGameOver() && !arenaStopRequested && game.history().length < 240) {
       const v2Turn = game.turn() === "w";
-      const move = await getArenaMove(v2Turn ? "v2" : "v1", depth);
+      const move = await getArenaMove(v2Turn ? "v3" : "v2", depth);
       if (arenaStopRequested) break;
       if (!move) break;
       game.move(move);
@@ -331,12 +331,12 @@ async function startArenaMatch() {
       document.querySelector("#arena-ply").textContent = game.history().length + " plies";
       const last = game.history({ verbose: true }).slice(-1)[0];
       document.querySelector("#arena-progress").textContent =
-        (v2Turn ? "Marlin V2" : "Marlin V1") + " played " + (last?.san || move.from + "-" + move.to);
+        (v2Turn ? "Marlin V3" : "Marlin V2") + " played " + (last?.san || move.from + "-" + move.to);
       await wait(speed);
     }
     if (game.isCheckmate()) {
-      const winner = game.turn() === "w" ? "V1" : "V2";
-      if (winner === "V2") arenaStats.v2++; else arenaStats.v1++;
+      const winner = game.turn() === "w" ? "V2" : "V3";
+      if (winner === "V3") arenaStats.v3++; else arenaStats.v2++;
       document.querySelector("#arena-live").textContent = winner + " WINS";
       document.querySelector("#arena-progress").textContent = "Checkmate — Marlin " + winner + " wins.";
     } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.history().length >= 240) {
