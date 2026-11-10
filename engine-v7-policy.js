@@ -78,24 +78,6 @@ function chooseMasterMove(game, data, expectedFen) {
   return candidates[0] || null;
 }
 
-function isCapturingCandidate(game, candidate) {
-  if (!candidate?.from || !candidate?.to) return true;
-  const coordinateMatches = game.moves({ verbose: true }).filter(move =>
-    move.from === candidate.from && move.to === candidate.to
-  );
-  if (!coordinateMatches.length) return true;
-
-  // The Syzygy adapter uses "q" as the default no-promotion marker. Resolve
-  // the move against the legal coordinate candidates without confusing that
-  // default with an illegal promotion or a non-promotion capture.
-  const promotions = coordinateMatches.filter(move => Boolean(move.promotion));
-  const legal = promotions.length
-    ? promotions.find(move => move.promotion === (candidate.promotion || "q"))
-    : coordinateMatches.find(move => !move.promotion);
-
-  return !legal || Boolean(legal.captured);
-}
-
 async function fetchMasterBookMove(game, timeoutMs = 1100) {
   const history = game.history();
   if (history.length >= BOOK_MAX_PLIES) return null;
@@ -160,14 +142,13 @@ async function fetchMasterBookMove(game, timeoutMs = 1100) {
 
 export async function findBestMove(game, maxDepth = 6, options = {}) {
   const tablebaseMove = await probeSyzygy(game);
-  if (tablebaseMove && !isCapturingCandidate(game, tablebaseMove)) return tablebaseMove;
+  if (tablebaseMove) return tablebaseMove;
 
   const masterMove = await fetchMasterBookMove(game);
-  if (masterMove && !isCapturingCandidate(game, masterMove)) return masterMove;
+  if (masterMove) return masterMove;
 
   const localBookMove = selectLocalBookMove(game);
-  if (localBookMove && repertoireAllows(game, localBookMove) &&
-      !isCapturingCandidate(game, localBookMove)) {
+  if (localBookMove && repertoireAllows(game, localBookMove)) {
     return {
       from: localBookMove.from,
       to: localBookMove.to,
