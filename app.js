@@ -229,10 +229,19 @@ function updateArenaStats() {
 }
 function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
+let arenaPendingResolve = null;
+
 function stopArenaWorker() {
   if (arenaWorker) {
     arenaWorker.terminate();
     arenaWorker = null;
+  }
+  // Terminating a Worker does not fire onmessage/onerror. Settle the
+  // waiting move request so Stop cannot leave the Arena loop stuck.
+  if (arenaPendingResolve) {
+    const resolve = arenaPendingResolve;
+    arenaPendingResolve = null;
+    resolve(null);
   }
 }
 
@@ -242,16 +251,24 @@ function getArenaMove(version, depth) {
     const requestId = ++arenaRequestId;
     const worker = new Worker("./arena-worker.js", { type: "module" });
     arenaWorker = worker;
+    arenaPendingResolve = resolve;
+
     worker.onmessage = (event) => {
       if (event.data.requestId !== requestId) return;
-      stopArenaWorker();
+      worker.terminate();
+      if (arenaWorker === worker) arenaWorker = null;
+      arenaPendingResolve = null;
       if (event.data.error) reject(new Error(event.data.error));
       else resolve(event.data.move);
     };
+
     worker.onerror = (event) => {
-      stopArenaWorker();
+      worker.terminate();
+      if (arenaWorker === worker) arenaWorker = null;
+      arenaPendingResolve = null;
       reject(new Error(event.message || "Arena worker failed to load"));
     };
+
     worker.postMessage({
       requestId,
       pgn: game.pgn({ maxWidth: 1000 }),
