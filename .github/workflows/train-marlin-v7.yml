@@ -1,0 +1,160 @@
+name: Train and publish MARLIN V7
+
+on:
+  workflow_dispatch:
+    inputs:
+      master_pgn_url:
+        description: "Optional HTTPS URL to a PGN or PGN.zst file you are licensed to use"
+        required: false
+        type: string
+        default: ""
+      data_attribution:
+        description: "Dataset attribution / licence notice to store with the model"
+        required: false
+        type: string
+        default: "Operator-supplied PGN; verify source licence and provide required attribution."
+      min_elo:
+        description: "Minimum Elo required for both players unless a recognised master title is present"
+        required: true
+        type: string
+        default: "2400"
+      games:
+        description: "Additional Stockfish teacher games"
+        required: true
+        type: string
+        default: "300"
+      depth:
+        description: "Stockfish teacher search depth"
+        required: true
+        type: string
+        default: "12"
+      epochs:
+        description: "V7 NNUE training epochs"
+        required: true
+        type: string
+        default: "40"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: marlin-v7-training
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Stockfish and PGN decompressor
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y stockfish zstd
+          stockfish --version
+      - name: Install training dependencies
+        run: python -m pip install -r training/requirements.txt
+      - name: Prepare authorised master PGNs
+        env:
+          MASTER_PGN_URL: ${{ inputs.master_pgn_url }}
+        run: |
+          mkdir -p training/gm-games training/data nnue
+          if [ -n "$MASTER_PGN_URL" ]; then
+            case "$MASTER_PGN_URL" in
+              https://*) ;;
+              *) echo "The PGN URL must use HTTPS."; exit 1 ;;
+            esac
+            curl --fail --location --retry 3 "$MASTER_PGN_URL" -o /tmp/marlin-v7-master-source
+            case "$MASTER_PGN_URL" in
+              *.pgn.zst|*.zst)
+                zstd --decompress --stdout /tmp/marlin-v7-master-source > training/gm-games/master-games.pgn
+                ;;
+              *)
+                cp /tmp/marlin-v7-master-source training/gm-games/master-games.pgn
+                ;;
+            esac
+          fi
+          if ! find training/gm-games -type f -name '*.pgn' -print -quit | grep -q .; then
+            echo "No PGN input. Supply master_pgn_url or commit authorised PGNs under training/gm-games/."
+            exit 1
+          fi
+      - name: Build Stockfish-labelled master-game positions
+        env:
+          MIN_ELO: ${{ inputs.min_elo }}
+          TEACHER_DEPTH: ${{ inputs.depth }}
+        run: |
+          python training/generate_gm_dataset.py \
+            --pgn-dir training/gm-games \
+            --stockfish "$(command -v stockfish)" \
+            --min-elo "$MIN_ELO" \
+            --depth "$TEACHER_DEPTH" \
+            --sample-every 2 \
+            --max-positions 150000 \
+            --out training/data/marlin-v7-masters.jsonl
+      - name: Generate supplementary Stockfish teacher positions
+        env:
+          GAMES: ${{ inputs.games }}
+          TEACHER_DEPTH: ${{ inputs.depth }}
+        run: |
+          python training/generate_dataset.py \
+            --stockfish "$(command -v stockfish)" \
+            --games "$GAMES" \
+            --depth "$TEACHER_DEPTH" \
+            --sample-every 2 \
+            --out training/data/marlin-v7-teacher.jsonl
+      - name: Train independent V7 NNUE
+        env:
+          EPOCHS: ${{ inputs.epochs }}
+          DATA_ATTRIBUTION: ${{ inputs.data_attribution }}
+        run: |
+          python training/train_nnue_v7.py \
+            --data training/data/marlin-v7-masters.jsonl \
+            --data training/data/marlin-v7-teacher.jsonl \
+            --epochs "$EPOCHS" \
+            --data-attribution "$DATA_ATTRIBUTION" \
+            --out nnue/marlin-v7.nnue.json
+      - name: Validate V7 network and master-game contribution
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          path = Path("nnue/marlin-v7.nnue.json")
+          model = json.loads(path.read_text(encoding="utf-8"))
+          assert model["format"] == "MARLIN_NNUE_V1"
+          assert model["architecture"] == "768x128x32x1"
+          assert model["feature_encoding"] == "stm-relative-piece-square-v1"
+          training = model["training"]
+          assert training["positions"] >= 1000
+          assert training["sources"].get("human-master-pgn", 0) >= 1000
+          weights = model["weights"]
+          assert len(weights["fc1_w"]) == 768 and all(len(row) == 128 for row in weights["fc1_w"])
+          assert len(weights["fc2_w"]) == 128 and all(len(row) == 32 for row in weights["fc2_w"])
+          assert len(weights["out_w"]) == 32
+          numbers = [v for row in weights["fc1_w"] for v in row]
+          assert all(math.isfinite(v) for v in numbers)
+          print("Validated MARLIN V7:", training)
+          print("Model bytes:", path.stat().st_size)
+          PY
+      - name: Publish V7 weights to GitHub Pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f nnue/marlin-v7.nnue.json
+          if git diff --cached --quiet; then
+            echo "V7 weights unchanged."
+          else
+            git commit -m "Publish trained MARLIN V7 NNUE model"
+            git push
+          fi
+      - name: Upload V7 training datasets
+        uses: actions/upload-artifact@v5
+        with:
+          name: marlin-v7-training-data
+          path: |
+            training/data/marlin-v7-masters.jsonl
+            training/data/marlin-v7-teacher.jsonl
+          retention-days: 14
