@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101722">
+  <title>Marlin Chess</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header><div class="brand"><span class="mark">♞</span><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version">v0.1</span></header>
+    <section class="layout">
+      <div class="board-wrap">
+        <div class="board" id="board" role="grid" aria-label="Chess board"></div>
+        <div class="coordinates"><span>WHITE</span><span>BLACK</span></div>
+      </div>
+      <aside class="panel">
+        <div class="status"><span class="dot"></span><div><small>GAME STATUS</small><strong id="status">Your move — White</strong></div></div>
+        <div class="controls">
+          <label for="depth">ENGINE SEARCH</label>
+          <select id="depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Normal</option><option value="3" selected>Depth 3 · Stronger</option><option value="4">Depth 4 · Slow</option></select>
+          <button id="new-game" class="primary">New game</button>
+          <button id="undo">Undo last turn</button>
+        </div>
+        <div class="thinking" id="thinking">MARLIN READY</div>
+        <div class="moves"><div class="section-title">MOVE HISTORY</div><ol id="history"><li class="empty">Moves will appear here.</li></ol></div>
+        <p class="note">You play White. Marlin plays Black. This is an early experimental engine, not yet a Stockfish-level opponent.</p>
+      </aside>
+    </section>
+    <footer>MARLIN · BUILT TO LEARN, SEARCH, AND IMPROVE</footer>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
