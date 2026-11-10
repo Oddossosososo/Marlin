@@ -127,4 +127,61 @@ undoButton.addEventListener("click", () => {
   render();
 });
 
+
+// PGN maker: validates imported games and tags Marlin as GM on either side.
+const pgnInput = document.querySelector("#pgn-input");
+const pgnOutput = document.querySelector("#pgn-output");
+const pgnStatus = document.querySelector("#pgn-status");
+const marlinColor = document.querySelector("#marlin-color");
+
+document.querySelector("#use-current-pgn").addEventListener("click", () => {
+  pgnInput.value = game.pgn({ maxWidth: 80 });
+  pgnStatus.textContent = "Current game loaded into the PGN editor.";
+});
+
+document.querySelector("#make-pgn").addEventListener("click", () => {
+  try {
+    const imported = new Chess();
+    const source = pgnInput.value.trim() || game.pgn({ maxWidth: 80 });
+    imported.loadPgn(source);
+    const marlinIsWhite = marlinColor.value === "w";
+    const whiteName = marlinIsWhite ? "Marlin" : "Player";
+    const blackName = marlinIsWhite ? "Player" : "Marlin";
+    const whiteTitle = marlinIsWhite ? '[WhiteTitle "GM"]' : "";
+    const blackTitle = marlinIsWhite ? "" : '[BlackTitle "GM"]';
+    let body = imported.pgn({ maxWidth: 80 });
+    body = body
+      .replace(/^\[(?:White|Black|WhiteTitle|BlackTitle)\s+"[^"]*"\]\s*\n/gm, "")
+      .replace(/^\[Event\s+"[^"]*"\]\s*\n/gm, "");
+    const headers = [
+      '[Event "Marlin PGN"]',
+      '[Site "Marlin Chess"]',
+      '[White "' + whiteName + '"]',
+      whiteTitle,
+      '[Black "' + blackName + '"]',
+      blackTitle,
+      '[Result "' + imported.isCheckmate() ? (imported.turn() === "w" ? "0-1" : "1-0") : (imported.isDraw() ? "1/2-1/2" : "*") + '"]'
+    ].filter(Boolean).join("\n");
+    pgnOutput.value = headers + "\n\n" + body.replace(/^\[[^\n]*\]\s*\n/gm, "").trim();
+    pgnStatus.textContent = "PGN created and validated. Marlin is " + (marlinIsWhite ? "White" : "Black") + " with the GM title tag.";
+  } catch (error) {
+    pgnOutput.value = "";
+    pgnStatus.textContent = "Invalid PGN: " + error.message;
+  }
+});
+
+document.querySelector("#download-pgn").addEventListener("click", () => {
+  if (!pgnOutput.value.trim()) {
+    pgnStatus.textContent = "Create the PGN first.";
+    return;
+  }
+  const blob = new Blob([pgnOutput.value], { type: "application/x-chess-pgn;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "marlin-game.pgn";
+  link.click();
+  URL.revokeObjectURL(url);
+});
+
 render();
