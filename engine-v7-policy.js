@@ -80,12 +80,19 @@ function chooseMasterMove(game, data, expectedFen) {
 
 function isCapturingCandidate(game, candidate) {
   if (!candidate?.from || !candidate?.to) return true;
-  const legal = game.moves({ verbose: true }).find(move =>
-    move.from === candidate.from &&
-    move.to === candidate.to &&
-    (move.promotion || null) === (candidate.promotion || null)
+  const coordinateMatches = game.moves({ verbose: true }).filter(move =>
+    move.from === candidate.from && move.to === candidate.to
   );
-  // Unknown or stale book/tablebase moves are never trusted.
+  if (!coordinateMatches.length) return true;
+
+  // The Syzygy adapter uses "q" as the default no-promotion marker. Resolve
+  // the move against the legal coordinate candidates without confusing that
+  // default with an illegal promotion or a non-promotion capture.
+  const promotions = coordinateMatches.filter(move => Boolean(move.promotion));
+  const legal = promotions.length
+    ? promotions.find(move => move.promotion === (candidate.promotion || "q"))
+    : coordinateMatches.find(move => !move.promotion);
+
   return !legal || Boolean(legal.captured);
 }
 
