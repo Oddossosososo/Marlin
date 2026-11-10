@@ -33,3 +33,8 @@ MARLIN V1, V2 and V3 are deprecated and retained only for historical reference, 
 Open the GitHub Pages site:
 
 https://oddossosososo.github.io/Marlin/
+
+## Search depth and chess-piece artwork
+
+- Play, Arena and PGN analysis expose search depths 1–22. Depth 22 is an experimental upper limit and can take a very long time; it is not a promise that every position will reach depth 22 quickly. Play includes a Stop search control, and Arena has its existing Stop control.
+- The board uses locally stored Cburnett SVG chess-piece artwork by Colin M. L. Burnett. See [PIECE-ATTRIBUTION.md](PIECE-ATTRIBUTION.md).
