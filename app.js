@@ -199,9 +199,18 @@ let arenaAutoStarted = false;
 
 function setSection(section) {
   const showArena = section === "arena";
+  const layout = document.querySelector(".layout");
+  const boardWrap = document.querySelector(".board-wrap");
+  const arenaBoardSlot = document.querySelector("#arena-board-slot");
+  const sidePanel = document.querySelector(".panel");
   arenaPanel.hidden = !showArena;
-  document.querySelector(".layout").hidden = showArena;
   document.querySelector(".pgn-panel").hidden = showArena;
+  if (showArena) {
+    arenaBoardSlot.appendChild(boardWrap);
+  } else {
+    layout.insertBefore(boardWrap, sidePanel);
+  }
+  layout.hidden = false;
   playNav.classList.toggle("active", !showArena);
   arenaNav.classList.toggle("active", showArena);
   if (!showArena) arenaAutoStarted = false;
