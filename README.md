@@ -5,7 +5,7 @@ MARLIN is an experimental browser chess engine and training project.
 ## Current engine: V7
 
 - V7 is the default engine for Play and PGN next-move analysis.
-- Iterative deepening, alpha-beta / negamax, transposition table, PVS, LMR and null-move pruning. Search stops at the selected depth; there is no fixed node-count cutoff. Actual nodes are reported for diagnostics.
+- Iterative deepening, alpha-beta / negamax, transposition table, PVS, LMR and null-move pruning. Search stops at the selected depth; there is no fixed node-count cutoff. Depth 6 is the default in Play, Arena and PGN analysis. Actual nodes are reported for diagnostics. V7's search hot path avoids temporary board allocation during Zobrist hashing and reuses previous-move context rather than rebuilding move history at every node.
 - A dedicated handcrafted evaluation adds king safety, pawn structure, piece activity and mobility, bishop-pair value, rook files and endgame king activity. Structural weaknesses are evaluated as soft penalties; tactics can justify them.
 - The opening policy consults Lichess's master-game opening explorer, enforces the selected first-move repertoire, and falls back to the local curated lines when the service is unavailable.
 - V7 loads its own weights from `nnue/marlin-v7.nnue.json`. Until the V7 training workflow publishes that file, V7 uses its handcrafted evaluation.
