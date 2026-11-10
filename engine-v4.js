@@ -149,12 +149,19 @@ function evaluateClassical(game) {
   return game.turn() === "w" ? score : -score;
 }
 
-}
 
 function evaluate(game) {
-  const nnueScore = evaluateNnue(game);
-  return nnueScore === null ? evaluateClassical(game) : nnueScore;
+  const score = evaluateNnue(game);
+  return score === null ? evaluateClassical(game) : score;
 }
+
+export async function initialiseV4() {
+  try { await loadNnueWeights(); } catch (error) {
+    console.warn("MARLIN V4: Stockfish-trained NNUE weights not installed; classical V3 evaluation active.", error);
+  }
+  return { nnue: hasNnueWeights() };
+}
+export { hasNnueWeights };
 
 function terminalScore(game, ply) {
   if (game.isCheckmate()) return -MATE + ply;
@@ -393,6 +400,3 @@ export function findBestMove(game, maxDepth = 4) {
 
   return { from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion || "q", score: bestScore };
 }
-
-// V4 NNUE controls; the search core is carried forward from the V3 Zobrist/TT engine.
-export { loadNnueWeights, hasNnueWeights };
