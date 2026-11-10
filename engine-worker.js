@@ -3,7 +3,7 @@ import { findBestMove as findPolicyMove, initialiseV7 } from "./engine-v7-policy
 import { findBestMove as findSearchMove } from "./engine-v7.js";
 
 self.onmessage = async (event) => {
-  const { pgn, depth = 5, requestId } = event.data || {};
+  const { pgn, depth = 6, requestId } = event.data || {};
   try {
     const game = new Chess();
     if (pgn) game.loadPgn(pgn);
