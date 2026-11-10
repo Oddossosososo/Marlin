@@ -1,0 +1,99 @@
+name: Train and publish MARLIN V6 NNUE
+
+on:
+  workflow_dispatch:
+    inputs:
+      games:
+        description: "Stockfish teacher games"
+        required: true
+        default: "200"
+      depth:
+        description: "Stockfish teacher search depth"
+        required: true
+        default: "10"
+      epochs:
+        description: "Training epochs"
+        required: true
+        default: "30"
+  push:
+    paths:
+      - ".github/workflows/train-marlin-v6.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: marlin-v6-training
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Stockfish teacher
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y stockfish
+          stockfish --version
+      - name: Install training dependencies
+        run: python -m pip install -r training/requirements.txt
+      - name: Generate larger teacher dataset
+        env:
+          GAMES: ${{ github.event.inputs.games || '200' }}
+          TEACHER_DEPTH: ${{ github.event.inputs.depth || '10' }}
+        run: |
+          python training/generate_dataset.py \
+            --stockfish "$(command -v stockfish)" \
+            --games "$GAMES" \
+            --depth "$TEACHER_DEPTH" \
+            --sample-every 2 \
+            --out training/data/marlin-v6-teacher.jsonl
+      - name: Train V6 NNUE
+        env:
+          EPOCHS: ${{ github.event.inputs.epochs || '30' }}
+        run: |
+          python training/train_nnue.py \
+            --data training/data/marlin-v6-teacher.jsonl \
+            --epochs "$EPOCHS" \
+            --out nnue/marlin-v6.nnue.json
+      - name: Validate trained network and dataset
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("nnue/marlin-v6.nnue.json")
+          d = json.loads(p.read_text(encoding="utf-8"))
+          assert d["format"] == "MARLIN_NNUE_V1"
+          assert d["architecture"] == "768x128x32x1"
+          assert d["feature_encoding"] == "stm-relative-piece-square-v1"
+          assert d["training"]["positions"] >= 1000
+          w = d["weights"]
+          assert len(w["fc1_w"]) == 768 and all(len(row) == 128 for row in w["fc1_w"])
+          assert len(w["fc2_w"]) == 128 and all(len(row) == 32 for row in w["fc2_w"])
+          assert len(w["out_w"]) == 32
+          print("Validated MARLIN V6:", d["training"])
+          print("Model size:", p.stat().st_size, "bytes")
+          PY
+      - name: Publish V6 weights to GitHub Pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f nnue/marlin-v6.nnue.json
+          if git diff --cached --quiet; then
+            echo "V6 weights unchanged."
+          else
+            git commit -m "Publish trained MARLIN V6 NNUE model"
+            git push
+          fi
+      - name: Upload training dataset
+        uses: actions/upload-artifact@v5
+        with:
+          name: marlin-v6-training-data
+          path: training/data/marlin-v6-teacher.jsonl
+          retention-days: 14
