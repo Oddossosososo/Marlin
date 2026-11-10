@@ -204,6 +204,7 @@ function setSection(section) {
   document.querySelector(".pgn-panel").hidden = showArena;
   playNav.classList.toggle("active", !showArena);
   arenaNav.classList.toggle("active", showArena);
+  if (!showArena) arenaAutoStarted = false;
   if (showArena && !arenaAutoStarted && !arenaRunning) {
     arenaAutoStarted = true;
     startArenaMatch();
