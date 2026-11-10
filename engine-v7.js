@@ -336,13 +336,13 @@ function updateHistory(move, depth, bonus) {
   history[key] = Math.max(-20000, Math.min(20000, old + change - old * Math.abs(change) / 20000));
 }
 
-function quiescence(game, alpha, beta, ply, remaining = 5) {
+function quiescence(game, alpha, beta, ply, remaining = 5, precomputedMoves = null, precomputedCheck = null) {
   countSearchNode();
-  if (isAutomaticDraw(game)) return 0;
-
-  const inCheck = game.isCheck();
-  let moves = game.moves({ verbose: true });
+  const inCheck = precomputedCheck === null ? game.isCheck() : precomputedCheck;
+  let moves = precomputedMoves || game.moves({ verbose: true });
+  // Check mate/stalemate before draw claims, matching chess game-end priority.
   if (moves.length === 0) return inCheck ? -MATE + ply : 0;
+  if (isAutomaticDraw(game)) return 0;
 
   let stand = inCheck ? -Infinity : evaluate(game);
   if (!inCheck) {
@@ -380,8 +380,12 @@ function makeNullPosition(game) {
 
 function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove = null) {
   countSearchNode();
-  if (depth <= 0) return quiescence(game, alpha, beta, ply);
+  const inCheck = game.isCheck();
+  const legalMoves = game.moves({ verbose: true });
+  // Detect mate/stalemate once and reuse this move list for search/quiescence.
+  if (legalMoves.length === 0) return inCheck ? -MATE + ply : 0;
   if (isAutomaticDraw(game)) return 0;
+  if (depth <= 0) return quiescence(game, alpha, beta, ply, 5, legalMoves, inCheck);
   if (ply >= MAX_PLY - 1) return evaluate(game);
 
   const originalAlpha = alpha;
@@ -398,9 +402,6 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
     if (ttFlag === 3 && ttScore <= alpha) return ttScore;
   }
 
-  const inCheck = game.isCheck();
-  const legalMoves = game.moves({ verbose: true });
-  if (legalMoves.length === 0) return inCheck ? -MATE + ply : 0;
   const counterKey = previousMove && isQuiet(previousMove) ? quietKey(previousMove) : null;
   const counterMove = counterKey ? counterMoves[counterKey] : null;
   // Null-move pruning: if passing the turn still scores above beta,
