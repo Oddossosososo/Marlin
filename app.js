@@ -225,6 +225,66 @@ const pgnOutput = document.querySelector("#pgn-output");
 const pgnStatus = document.querySelector("#pgn-status");
 const marlinColor = document.querySelector("#marlin-color");
 
+// PGN analyser: calculate the best next move for the side to move.
+const analysisInput = document.querySelector("#analysis-pgn");
+const analysisButton = document.querySelector("#analyse-pgn");
+const analysisDepth = document.querySelector("#analysis-depth");
+const analysisResult = document.querySelector("#analysis-result");
+
+analysisButton.addEventListener("click", () => {
+  const source = analysisInput.value.trim();
+  if (!source) {
+    analysisResult.textContent = "Paste a PGN first.";
+    return;
+  }
+
+  const validationGame = new Chess();
+  try {
+    validationGame.loadPgn(source);
+  } catch (error) {
+    analysisResult.textContent = "Invalid PGN: " + error.message;
+    return;
+  }
+
+  if (validationGame.isGameOver()) {
+    analysisResult.textContent = "This PGN is already over. There is no next move.";
+    return;
+  }
+
+  const side = validationGame.turn() === "w" ? "White" : "Black";
+  const worker = new Worker("./engine-worker.js", { type: "module" });
+  const requestId = Date.now();
+  analysisButton.disabled = true;
+  analysisResult.textContent = "Marlin is analysing the position…";
+
+  const finish = (message) => {
+    analysisButton.disabled = false;
+    analysisResult.textContent = message;
+    worker.terminate();
+  };
+
+  worker.onmessage = (event) => {
+    if (event.data.requestId !== requestId) return;
+    if (event.data.error) {
+      finish("Analysis failed: " + event.data.error);
+      return;
+    }
+    const move = event.data.move;
+    const sourceLabel = move.source === "opening-book" ? "opening book" :
+      move.source === "syzygy-7-man" ? "Syzygy tablebase" :
+      move.source === "search-fallback" ? "search fallback" : "engine search";
+    finish("Best next move for " + side + ": " + move.san +
+      " (" + move.from + "–" + move.to + "). Source: " + sourceLabel + ".");
+  };
+
+  worker.onerror = (event) => finish("Analysis worker failed: " + (event.message || "unknown error"));
+  worker.postMessage({
+    requestId,
+    pgn: source,
+    depth: Number(analysisDepth.value)
+  });
+});
+
 document.querySelector("#use-current-pgn").addEventListener("click", () => {
   pgnInput.value = addMarlinPgnBranding(game.pgn({ maxWidth: 80 }), "Marlin Current Game");
   pgnStatus.textContent = "Current game loaded into the PGN editor.";
