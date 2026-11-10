@@ -26,7 +26,7 @@
         <div class="status"><span class="dot"></span><div><small>GAME STATUS</small><strong id="status">Your move — White</strong></div></div>
         <div class="controls">
           <label for="depth">SEARCH DEPTH</label>
-          <select id="depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Normal</option><option value="3">Depth 3 · Normal</option><option value="4">Depth 4 · Strong</option><option value="5" selected>Depth 5 · Stronger</option><option value="6">Depth 6 · Deep</option></select>
+          <select id="depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Normal</option><option value="3" selected>Depth 3 · Normal</option><option value="4">Depth 4 · Strong</option><option value="5">Depth 5 · Stronger</option><option value="6">Depth 6 · Deep</option></select>
           <button id="new-game" class="primary">New game</button>
           <button id="undo">Undo last turn</button>
         </div>
@@ -45,7 +45,7 @@
       </div>
       <div class="arena-controls">
         <label for="arena-depth">ARENA SEARCH DEPTH</label>
-        <select id="arena-depth"><option value="1">1 · Fast</option><option value="2">2 · Normal</option><option value="3">3 · Standard</option><option value="4">4 · Strong</option><option value="5" selected>5 · Stronger</option><option value="6">6 · Deep</option></select>
+        <select id="arena-depth"><option value="1">1 · Fast</option><option value="2">2 · Normal</option><option value="3" selected>3 · Standard</option><option value="4">4 · Strong</option><option value="5">5 · Stronger</option><option value="6">6 · Deep</option></select>
         <label for="arena-speed">MOVE SPEED</label>
         <select id="arena-speed"><option value="100">Fast</option><option value="450" selected>Normal</option><option value="1000">Slow</option></select>
         <button id="arena-start" class="primary">Start match</button>
@@ -71,9 +71,9 @@
         <button id="analyse-pgn" class="primary">Find best next move</button>
         <select id="analysis-depth" aria-label="Analysis depth">
           <option value="2">Depth 2 · Quick</option>
-          <option value="3">Depth 3 · Normal</option>
+          <option value="3" selected>Depth 3 · Normal</option>
           <option value="4">Depth 4 · Strong</option>
-          <option value="5" selected>Depth 5 · Deeper</option>
+          <option value="5">Depth 5 · Deeper</option>
         </select>
       </div>
       <p id="analysis-result" class="pgn-help" aria-live="polite">Best move will appear here.</p>
