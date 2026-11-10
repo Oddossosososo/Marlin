@@ -25,7 +25,7 @@
       <aside class="panel">
         <div class="status"><span class="dot"></span><div><small>GAME STATUS</small><strong id="status">Your move — White</strong></div></div>
         <div class="controls">
-          <label for="depth">ENGINE SEARCH</label>
+          <label for="depth">BASE DEPTH · 5M NODE SEARCH</label>
           <select id="depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Normal</option><option value="3" selected>Depth 3 · Normal</option><option value="4">Depth 4 · Strong</option><option value="5">Depth 5 · Stronger</option><option value="6">Depth 6 · Deep</option></select>
           <button id="new-game" class="primary">New game</button>
           <button id="undo">Undo last turn</button>
@@ -59,6 +59,7 @@
         <div><small>DRAWS</small><strong id="arena-draws">0</strong></div>
         <div><small>V5 WINS</small><strong id="v3-wins">0</strong></div>
       </div>
+      <p class="pgn-help">Both engines receive the same five-million-node cap per move. Depth 3 is the default baseline; iterative deepening continues beyond depth 3 until the node budget is exhausted. Opening-book and Syzygy tablebase moves bypass normal search.</p>
       <p class="pgn-help">This is a local self-play test, not official Fishtest or an Elo rating. One match is shown on the board.</p>
     </section>
     <section class="pgn-panel best-move-panel">
