@@ -1,3 +1,4 @@
+/** @deprecated MARLIN V3 legacy engine. Retained for historical matches and regression comparisons; the active site uses V7. */
 const VALUE = { p: 100, n: 320, b: 335, r: 500, q: 900, k: 20000 };
 const MATE = 100000;
 const MAX_PLY = 128;
