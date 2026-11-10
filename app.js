@@ -26,6 +26,37 @@ const arenaPanel = document.querySelector("#arena-panel");
 const pieceNames = { k:"king", q:"queen", r:"rook", b:"bishop", n:"knight", p:"pawn" };
 const files = "abcdefgh";
 
+function updatePlayerIdentity() {
+  const blackPlayer = document.querySelector("#black-player");
+  const whitePlayer = document.querySelector("#white-player");
+  const inArena = !arenaPanel.hidden;
+  const v6IsBlack = lastArenaV6Color === "b";
+  const blackName = inArena ? (v6IsBlack ? "MARLIN V6" : "MARLIN V7") : "MARLIN V7";
+  const whiteName = inArena ? (v6IsBlack ? "MARLIN V7" : "MARLIN V6") : "YOU";
+  const whiteIsHuman = !inArena;
+
+  const setEngine = (element, name, color) => {
+    element.classList.toggle("human-player", false);
+    element.classList.add("engine-player");
+    element.innerHTML =
+      '<img class="player-logo" src="Screenshot%202026-11-10%206.36.32%20PM.png" alt="MARLIN engine logo">' +
+      '<span class="player-copy"><small>' + color + '</small><strong>' + name + '</strong><em>CHESS ENGINE</em></span>' +
+      '<span class="player-badge">ENGINE</span>';
+  };
+  const setHuman = (element) => {
+    element.classList.remove("engine-player");
+    element.classList.add("human-player");
+    element.innerHTML =
+      '<span class="human-avatar" aria-hidden="true">YOU</span>' +
+      '<span class="player-copy"><small>WHITE</small><strong>YOU</strong><em>PLAYER</em></span>' +
+      '<span class="player-badge">PLAYER</span>';
+  };
+
+  setEngine(blackPlayer, blackName, "BLACK");
+  if (whiteIsHuman) setHuman(whitePlayer);
+  else setEngine(whitePlayer, whiteName, "WHITE");
+}
+
 function statusText() {
   if (game.isCheckmate()) return game.turn() === "w" ? "Checkmate — Marlin wins" : "Checkmate — You win!";
   if (game.isStalemate()) return "Draw — stalemate";
@@ -35,6 +66,7 @@ function statusText() {
 }
 
 function render() {
+  updatePlayerIdentity();
   const board = game.board();
   boardEl.innerHTML = "";
   for (let r = 0; r < 8; r++) {
