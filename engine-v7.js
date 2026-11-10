@@ -346,11 +346,11 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
   return best;
 }
 
-export function findBestMove(game, maxDepth = 5) {
+export function findBestMove(game, maxDepth = 6) {
   searchNodes = 0;
   // Iterative deepening ends at the selected search depth. Nodes are counted
   // for diagnostics only and never stop the search early.
-  const depthCeiling = Math.max(1, Math.min(MAX_PLY - 2, Math.floor(Number(maxDepth) || 5)));
+  const depthCeiling = Math.max(1, Math.min(MAX_PLY - 2, Math.floor(Number(maxDepth) || 6)));
   const moves = game.moves({ verbose: true });
   if (!moves.length) return null;
 
