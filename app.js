@@ -136,8 +136,7 @@ function getEngineMove(depth) {
     engineWorker.postMessage({
       requestId,
       pgn: game.pgn({ maxWidth: 1000 }),
-      depth,
-      maxNodes: 5_000_000
+      depth
     });
   });
 }
@@ -448,8 +447,7 @@ function getArenaMove(version, depth) {
       requestId,
       pgn: game.pgn({ maxWidth: 1000 }),
       depth,
-      version,
-      maxNodes: 5_000_000
+      version
     });
   });
 }
@@ -484,7 +482,7 @@ async function startArenaMatch() {
         } else if (move.source === "syzygy-7-man") {
           nodesEl.textContent = "Syzygy · tablebase move";
         } else {
-          nodesEl.textContent = Number(result.nodes || 0).toLocaleString() + " / 5,000,000 nodes";
+          nodesEl.textContent = Number(result.nodes || 0).toLocaleString() + " search nodes";
         }
       }
       game.move(move);
