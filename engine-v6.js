@@ -442,6 +442,10 @@ export function findBestMove(game, maxDepth = 5, options = {}) {
   searchNodeLimit = Number.isFinite(requestedLimit) && requestedLimit > 0 ? Math.floor(requestedLimit) : Infinity;
   searchNodes = 0;
   searchLimitReached = false;
+  // When a node budget is supplied, iterative deepening continues until the
+  // budget is exhausted. The UI depth selector is the requested baseline;
+  // the hard node cap, not that baseline, ends the search.
+  const depthCeiling = Number.isFinite(requestedLimit) ? MAX_PLY - 2 : maxDepth;
   const moves = game.moves({ verbose: true });
   if (!moves.length) return null;
 
@@ -453,7 +457,7 @@ export function findBestMove(game, maxDepth = 5, options = {}) {
   let bestMove = moves[0];
   let bestScore = -Infinity;
 
-  for (let depth = 1; depth <= maxDepth; depth++) {
+  for (let depth = 1; depth <= depthCeiling; depth++) {
     let window = depth >= 3 ? 35 : Infinity;
     let alpha = window === Infinity ? -Infinity : bestScore - window;
     let beta = window === Infinity ? Infinity : bestScore + window;
