@@ -28,6 +28,16 @@
         <p class="note">You play White. Marlin plays Black. This is an experimental engine. Stronger search can take longer.</p>
       </aside>
     </section>
+    <section class="pgn-panel">
+      <div class="section-title">PGN MAKER</div>
+      <p class="pgn-help">Paste a game or use the current Marlin game. Choose which colour Marlin played.</p>
+      <label for="pgn-input">PGN / game moves</label>
+      <textarea id="pgn-input" rows="7" spellcheck="false" placeholder="Paste PGN here, e.g. 1. e4 e5 2. Nf3 Nc6"></textarea>
+      <div class="pgn-options"><label for="marlin-color">Marlin plays</label><select id="marlin-color"><option value="b" selected>Black</option><option value="w">White</option></select></div>
+      <div class="pgn-actions"><button id="use-current-pgn">Use current game</button><button id="make-pgn" class="primary">Make PGN</button><button id="download-pgn">Download .pgn</button></div>
+      <textarea id="pgn-output" rows="9" readonly spellcheck="false" placeholder="Your generated PGN will appear here."></textarea>
+      <p id="pgn-status" class="pgn-help" aria-live="polite">Marlin will be tagged as GM in the selected colour.</p>
+    </section>
     <footer>MARLIN · BUILT TO LEARN, SEARCH, AND IMPROVE</footer>
   </main>
   <script type="module" src="app.js"></script>
