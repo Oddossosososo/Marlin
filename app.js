@@ -243,6 +243,7 @@ document.querySelector("#arena-download-pgn").addEventListener("click", () => {
 let arenaWorker = null;
 let arenaRequestId = 0;
 let arenaAutoStarted = false;
+let arenaMatchCount = 0;
 
 function setSection(section) {
   const showArena = section === "arena";
@@ -339,7 +340,7 @@ async function startArenaMatch() {
   render();
   try {
     while (!game.isGameOver() && !arenaStopRequested && game.history().length < 240) {
-      const v3Turn = game.turn() === "b";
+      const v3Turn = game.turn() === v3Color;
       const move = await getArenaMove(v3Turn ? "v3" : "v4", depth);
       if (arenaStopRequested) break;
       if (!move) break;
@@ -371,6 +372,7 @@ async function startArenaMatch() {
     document.querySelector("#arena-progress").textContent = "Match error: " + error.message;
   } finally {
     stopArenaWorker();
+    arenaMatchCount++;
     arenaRunning = false;
     startButton.disabled = false;
     render();
