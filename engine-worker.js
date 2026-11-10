@@ -3,7 +3,7 @@ import { findBestMove as findPolicyMove, initialiseV7 } from "./engine-v7-policy
 import { findBestMove as findSearchMove } from "./engine-v7.js";
 
 self.onmessage = async (event) => {
-  const { pgn, depth = 3, requestId, maxNodes = 5_000_000 } = event.data || {};
+  const { pgn, depth = 5, requestId } = event.data || {};
   try {
     const game = new Chess();
     if (pgn) game.loadPgn(pgn);
@@ -12,10 +12,10 @@ self.onmessage = async (event) => {
     let move;
     let fallbackUsed = false;
     try {
-      move = await findPolicyMove(game, depth, { maxNodes });
+      move = await findPolicyMove(game, depth);
     } catch (policyError) {
       console.warn("MARLIN V7 policy unavailable; using V7 core search:", policyError);
-      move = findSearchMove(game, depth, { maxNodes });
+      move = findSearchMove(game, depth);
       fallbackUsed = true;
     }
 
@@ -45,7 +45,6 @@ self.onmessage = async (event) => {
         nodes: move.nodes ?? 0
       },
       nodes: move.nodes ?? 0,
-      maxNodes,
       nnue: Boolean(initialised?.nnue)
     });
   } catch (error) {
