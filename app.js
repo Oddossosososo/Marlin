@@ -164,7 +164,7 @@ async function makeEngineMove() {
       if (error.message !== "Search timed out" || requestedRevision !== positionRevision) throw error;
       cancelEngineRequest();
       engineStatus = "MARLIN V6 · SWITCHING TO QUICK SEARCH";
-      result = await getEngineMoveWithTimeout(Math.min(selectedDepth, 3), 10000);
+      result = await getEngineMoveWithTimeout(Math.max(1, Math.min(selectedDepth - 2, 3)), 10000);
     }
     if (requestedRevision !== positionRevision || game.turn() !== "b" || game.isGameOver()) return;
 
