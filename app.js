@@ -244,7 +244,6 @@ let arenaWorker = null;
 let arenaRequestId = 0;
 let arenaAutoStarted = false;
 let arenaMatchCount = 0;
-let arenaMatchCount = 0;
 
 function setSection(section) {
   const showArena = section === "arena";
