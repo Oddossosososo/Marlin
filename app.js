@@ -111,6 +111,14 @@ function cancelEngineRequest() {
   }
 }
 
+function getEngineMoveWithTimeout(depth, timeoutMs = 15000) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Search timed out")), timeoutMs);
+  });
+  return Promise.race([getEngineMove(depth), timeout]).finally(() => clearTimeout(timer));
+}
+
 function getEngineMove(depth) {
   return new Promise((resolve, reject) => {
     if (!engineWorker) {
@@ -148,7 +156,16 @@ async function makeEngineMove() {
   const requestedRevision = positionRevision;
 
   try {
-    const result = await getEngineMove(Number(depthEl.value));
+    const selectedDepth = Number(depthEl.value);
+    let result;
+    try {
+      result = await getEngineMoveWithTimeout(selectedDepth, 15000);
+    } catch (error) {
+      if (error.message !== "Search timed out" || requestedRevision !== positionRevision) throw error;
+      cancelEngineRequest();
+      engineStatus = "MARLIN V6 · SWITCHING TO QUICK SEARCH";
+      result = await getEngineMoveWithTimeout(Math.min(selectedDepth, 3), 10000);
+    }
     if (requestedRevision !== positionRevision || game.turn() !== "b" || game.isGameOver()) return;
 
     const candidate = result.move;
