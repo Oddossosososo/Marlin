@@ -1,5 +1,5 @@
 import { Chess } from "https://esm.sh/chess.js@1.4.0";
-import { findBestMove as findV6Move, initialiseV6 } from "./engine-v6.js";
+import { findBestMove as findV6Move, initialiseV6 } from "./engine-v6-policy.js";
 
 const game = new Chess();
 const boardEl = document.querySelector("#board");
