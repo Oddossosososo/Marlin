@@ -56,8 +56,13 @@
     "iterative_deepening": true,
     "stop_condition": "selected maximum depth",
     "node_count": "measured for diagnostics only; not a stopping condition",
-    "default_play_depth": 5,
-    "default_arena_depth": 5
+    "default_play_depth": 6,
+    "default_arena_depth": 6,
+    "default_analysis_depth": 6,
+    "optimizations": [
+      "Parse FEN placement directly for transposition-table hashing instead of allocating a temporary board matrix",
+      "Pass previous-move context through recursive search rather than rebuilding the full move history at every node"
+    ]
   },
   "training": {
     "positions": "sampled from human master PGNs and labelled by Stockfish",
