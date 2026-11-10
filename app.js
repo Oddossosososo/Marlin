@@ -1,5 +1,6 @@
 import { Chess } from "https://esm.sh/chess.js@1.4.0";
 import { findBestMove } from "./engine.js";
+import { findBestMove as findV1Move } from "./engine-v1.js";
 
 const game = new Chess();
 const boardEl = document.querySelector("#board");
@@ -11,6 +12,12 @@ const undoButton = document.querySelector("#undo");
 let selected = null;
 let legalTargets = [];
 let thinking = false;
+let arenaRunning = false;
+let arenaStopRequested = false;
+const arenaStats = { v2: 0, draws: 0, v1: 0 };
+const playNav = document.querySelector("#play-nav");
+const arenaNav = document.querySelector("#arena-nav");
+const arenaPanel = document.querySelector("#arena-panel");
 
 const symbols = {
   w: { k:"♔", q:"♕", r:"♖", b:"♗", n:"♘", p:"♙" },
@@ -62,11 +69,11 @@ function render() {
       historyEl.appendChild(li);
     }
   }
-  undoButton.disabled = thinking || history.length === 0;
+  undoButton.disabled = thinking || arenaRunning || history.length === 0;
 }
 
 function onSquareClick(square) {
-  if (thinking || game.isGameOver() || game.turn() !== "w") return;
+  if (thinking || arenaRunning || game.isGameOver() || game.turn() !== "w") return;
   const piece = game.get(square);
 
   if (selected && legalTargets.includes(square)) {
@@ -111,6 +118,7 @@ function makeEngineMove() {
 }
 
 document.querySelector("#new-game").addEventListener("click", () => {
+  if (arenaRunning) return;
   game.reset();
   selected = null;
   legalTargets = [];
@@ -119,7 +127,7 @@ document.querySelector("#new-game").addEventListener("click", () => {
 });
 
 undoButton.addEventListener("click", () => {
-  if (thinking) return;
+  if (thinking || arenaRunning) return;
   if (game.turn() === "w" && game.history().length) game.undo(); // Undo Marlin's move.
   if (game.turn() === "b" && game.history().length) game.undo(); // Undo your move.
   selected = null;
