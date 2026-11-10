@@ -285,7 +285,7 @@ function quiescence(game, alpha, beta, ply, remaining = 5) {
   // Delta/SEE pruning: avoid wasting quiescence nodes on obviously losing
   // non-checking captures. Never prune evasions, promotions, or checking captures.
   if (!inCheck) moves = moves.filter(m =>
-    !m.captured || m.promotion || /[+#]$/.test(m.san || "") || staticExchangeScore(m) >= 0
+    !m.captured || m.promotion || /[+#]$/.test(m.san || "") || staticExchange(game, m) >= 0
   );
   ordered(moves, null, ply);
 
