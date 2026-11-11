@@ -25,7 +25,7 @@ async function findV9Move(fen, requestedDepth, reportProgress) {
   try {
     wasm.stringToUTF8(fen, fenPtr, fenSize);
     const depth = Math.max(1, Math.min(12, Math.floor(Number(requestedDepth) || 6)));
-    reportProgress({ stage: "searching", depth: 1, nodes: 0 });
+    reportProgress({ stage: "thinking", depth: 0, nodes: 0 });
     wasm._marlin_cpp_search(fenPtr, depth, outPtr, 512);
     const output = wasm.UTF8ToString(outPtr);
     const match = output.match(/^bestmove ([a-h][1-8][a-h][1-8][qrbn]?)/);
