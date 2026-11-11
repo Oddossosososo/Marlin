@@ -59,6 +59,18 @@ int main() {
     (void)marlin_cpp_search(start, 2, result, sizeof(result));
     CHECK(std::strncmp(result, "bestmove ", 9) == 0);
 
+    // Regression position from MARLIN's French Defense game: White is in
+    // check after ...Qe7+. Exercise the root check-evasion search path and
+    // retain the selected move in CI logs for move-quality comparisons.
+    const char* frenchCheck =
+        "r1b1kbnr/ppp1qppp/2n5/1N6/3N4/2Pp4/PP1P1PPP/R1BQKB1R w KQkq - 2 8";
+    char checkResult[256]{};
+    (void)marlin_cpp_search(frenchCheck, 4, checkResult, sizeof(checkResult));
+    CHECK(std::strncmp(checkResult, "bestmove ", 9) == 0);
+    CHECK(std::strstr(checkResult, " depth 4 nodes ") != nullptr);
+    std::cout << "MARLIN French check-evasion regression: "
+              << checkResult << "\n";
+
     // Verify that V9 accepts trained NNUE weights and evaluates with the
     // same side-to-move-relative output scale as the Python trainer.
     std::vector<float> fc1W(768 * 128, 0.0f);
@@ -78,17 +90,5 @@ int main() {
     CHECK(marlin_cpp_set_nnue_weights(nullptr, fc1B.data(), fc2W.data(),
                                       fc2B.data(), outW.data(), &outB) == 0);
 
-    // Regression position from MARLIN's French Defense game: White is in
-    // check after ...Qe7+. Exercise the root check-evasion search path and
-    // retain the selected move in CI logs for move-quality comparisons.
-    const char* frenchCheck =
-        "r1b1kbnr/ppp1qppp/2n5/1N6/3N4/2Pp4/PP1P1PPP/R1BQKB1R w KQkq - 2 8";
-    char checkResult[256]{};
-    (void)marlin_cpp_search(frenchCheck, 4, checkResult, sizeof(checkResult));
-    CHECK(std::strncmp(checkResult, "bestmove ", 9) == 0);
-    CHECK(std::strstr(checkResult, " depth 4 nodes ") != nullptr);
-    std::cout << "MARLIN French check-evasion regression: "
-              << checkResult << "\\n";
-
-    std::cout << "MARLIN C++ attacks, perft and search tests passed\\n";
+    std::cout << "MARLIN C++ attacks, perft and search tests passed\n";
 }
