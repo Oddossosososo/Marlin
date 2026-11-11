@@ -36,6 +36,7 @@ jobs:
             benchmark.js \
             marlin-v9.js \
             opening-book-v9.js \
+            opening-policy-v9.js \
             opening-book-v9-smoke-test.js \
             lichess-bot.js \
             lichess-v9-smoke-test.js \
