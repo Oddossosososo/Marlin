@@ -37,7 +37,7 @@ jobs:
             -s ALLOW_MEMORY_GROWTH=1 \
             -s FILESYSTEM=0 \
             -s EXPORTED_FUNCTIONS='["_marlin_cpp_search","_marlin_cpp_perft","_malloc","_free"]' \
-            -s EXPORTED_RUNTIME_METHODS='["UTF8ToString"]' \
+            -s EXPORTED_RUNTIME_METHODS='["UTF8ToString","stringToUTF8"]' \
             -o marlin-wasm.js
       - name: Smoke-test the compiled WebAssembly search
         run: |
@@ -45,12 +45,11 @@ jobs:
           import createMarlinModule from "./marlin-wasm.js";
           const wasm = await createMarlinModule();
           const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-          const fenBytes = new TextEncoder().encode(fen + "\0");
-          const fenPtr = wasm._malloc(fenBytes.length);
+          const fenSize = new TextEncoder().encode(fen).length + 1;
+          const fenPtr = wasm._malloc(fenSize);
           const outPtr = wasm._malloc(512);
           try {
-            wasm.HEAPU8.set(fenBytes, fenPtr);
-            wasm.HEAPU8.fill(0, outPtr, outPtr + 512);
+            wasm.stringToUTF8(fen, fenPtr, fenSize);
             wasm._marlin_cpp_search(fenPtr, 3, outPtr, 512);
             const result = wasm.UTF8ToString(outPtr);
             if (!/^bestmove [a-h][1-8][a-h][1-8][qrbn]? score /.test(result)) {
