@@ -155,7 +155,7 @@ async function main() {
   if (!botId) throw new Error("Could not identify the Lichess account.");
 
   console.log(`Connected to Lichess as ${account.username || botId}`);
-  console.log(`MARLIN V8 ready at depth ${DEPTH}. Only casual standard challenges will be accepted.`);
+  console.log(`MARLIN V8 ready at depth ${DEPTH}. Accepting all standard-chess challenges (rated/casual, clock/correspondence/unlimited).`);
   await initialiseV8();
 
   const activeGames = new Set();
@@ -168,16 +168,18 @@ async function main() {
       await readNdjson(response, async event => {
         if (event.type === "challenge" && event.challenge) {
           const challenge = event.challenge;
-          const valid = challenge.variant?.key === "standard" &&
-            challenge.rated === false &&
-            challenge.timeControl?.type === "clock" &&
-            Number(challenge.timeControl?.limit || 0) >= 60;
+          // chess.js and MARLIN's current move logic support standard chess only.
+          // Accept rated and casual games, with any standard time control.
+          const valid = challenge.variant?.key === "standard";
 
           if (valid) {
-            console.log("Accepting casual standard challenge:", challenge.id);
+            console.log(
+              `Accepting standard challenge (${challenge.rated ? "rated" : "casual"}, ${challenge.timeControl?.type || "unknown"}):`,
+              challenge.id
+            );
             await request(`/challenge/${encodeURIComponent(challenge.id)}/accept`, { method: "POST" });
           } else {
-            console.log("Declining unsupported challenge:", challenge.id);
+            console.log("Declining unsupported variant:", challenge.variant?.key || "unknown", challenge.id);
             await request(`/challenge/${encodeURIComponent(challenge.id)}/decline`, { method: "POST" })
               .catch(error => console.error("Could not decline challenge:", error.message));
           }
