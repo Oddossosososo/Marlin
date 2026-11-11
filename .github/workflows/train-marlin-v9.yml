@@ -149,6 +149,7 @@ jobs:
             --max-ply 24 \
             --min-samples 3 \
             --data-attribution "$DATA_ATTRIBUTION" \
+            --data-license "Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)" \
             --out nnue/marlin-v9-opening-book.json
       - name: Generate supplementary Stockfish teacher positions
         env:
@@ -172,6 +173,7 @@ jobs:
             --epochs "$EPOCHS" \
             --model-name "MARLIN V9" \
             --data-attribution "$DATA_ATTRIBUTION" \
+            --data-license "Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)" \
             --out nnue/marlin-v9.nnue.json
       - name: Validate the V9 network and GM contribution
         run: |
