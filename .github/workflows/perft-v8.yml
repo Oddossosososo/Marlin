@@ -1,0 +1,37 @@
+name: MARLIN V8 Perft Benchmark
+
+on:
+  push:
+    branches:
+      - v8-development
+    paths:
+      - '.github/workflows/perft-v8.yml'
+      - 'perft-v8.js'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  perft:
+    name: Run V8 perft depth 4
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout v8-development
+        uses: actions/checkout@v5
+        with:
+          ref: v8-development
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run perft benchmark
+        run: npm run perft:v8 -- 4
