@@ -105,13 +105,15 @@ export function v9NnueStatus() {
   return nnueStatus;
 }
 
-export async function searchV9(fen, requestedDepth = 4) {
+export async function searchV9(fen, requestedDepth = 4, onProgress = () => {}) {
   if (typeof fen !== "string" || !fen.trim()) {
     throw new TypeError("A valid FEN string is required.");
   }
 
   const depth = Math.max(1, Math.min(12, Math.floor(Number(requestedDepth) || 4)));
+  onProgress({ stage: "initialising", depth: 0, nodes: 0 });
   const wasm = await initialiseV9();
+  onProgress({ stage: "searching", depth: 0, nodes: 0 });
   const fenBytes = new TextEncoder().encode(fen);
   const fenSize = fenBytes.length + 1;
   const fenPtr = wasm._malloc(fenSize);
@@ -123,7 +125,7 @@ export async function searchV9(fen, requestedDepth = 4) {
     throw new Error("MARLIN V9 could not allocate WebAssembly memory.");
   }
 
-  const startedAt = process.hrtime.bigint();
+  const startedAt = globalThis.performance?.now?.() ?? Date.now();
   try {
     wasm.stringToUTF8(fen, fenPtr, fenSize);
     wasm._marlin_cpp_search(fenPtr, depth, outPtr, 512);
@@ -140,9 +142,9 @@ export async function searchV9(fen, requestedDepth = 4) {
       throw new Error("MARLIN V9 reached depth " + reachedDepth + " instead of " + depth + ".");
     }
 
-    const elapsedMs = Math.max(1, Number(process.hrtime.bigint() - startedAt) / 1e6);
+    const elapsedMs = Math.max(1, (globalThis.performance?.now?.() ?? Date.now()) - startedAt);
     const nodes = Number(nodesText);
-    return {
+    const result = {
       from: uci.slice(0, 2),
       to: uci.slice(2, 4),
       promotion: uci[4] || null,
@@ -155,6 +157,8 @@ export async function searchV9(fen, requestedDepth = 4) {
       nnue: nnueStatus.enabled,
       source: "cpp-wasm-v9"
     };
+    onProgress({ stage: "complete", depth: reachedDepth, completedDepth: reachedDepth, nodes, nps: result.nps, elapsedMs });
+    return result;
   } finally {
     wasm._free(fenPtr);
     wasm._free(outPtr);
