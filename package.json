@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "lichess-bot": "node lichess-bot.js"
+    "lichess-bot": "node lichess-bot.js",
+    "perft:v8": "node perft-v8.js"
   },
   "dependencies": {
     "chess.js": "^1.4.0"
