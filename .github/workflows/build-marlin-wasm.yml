@@ -1,0 +1,43 @@
+name: Build MARLIN C++ WebAssembly
+
+on:
+  push:
+    branches: [main, migration/cpp-engine]
+    paths:
+      - "cpp/**"
+      - "engine-worker.js"
+      - ".github/workflows/build-marlin-wasm.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: mymindstorm/setup-emsdk@v14
+      - name: Compile optimized browser engine
+        run: |
+          emcc cpp/attacks.cpp cpp/search.cpp \
+            -std=c++17 -O3 -flto \
+            -s MODULARIZE=1 \
+            -s EXPORT_ES6=1 \
+            -s ENVIRONMENT=web,worker \
+            -s ALLOW_MEMORY_GROWTH=1 \
+            -s FILESYSTEM=0 \
+            -s EXPORTED_FUNCTIONS='["_marlin_cpp_search","_marlin_cpp_perft","_malloc","_free"]' \
+            -s EXPORTED_RUNTIME_METHODS='["UTF8ToString"]' \
+            -o marlin-wasm.js
+      - name: Commit generated WebAssembly runtime
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add marlin-wasm.js marlin-wasm.wasm
+          if ! git diff --cached --quiet; then
+            git commit -m "Build optimized MARLIN C++ WebAssembly engine"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
