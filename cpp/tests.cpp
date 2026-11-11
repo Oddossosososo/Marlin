@@ -46,7 +46,7 @@ int main() {
 
     const char* kiwipete =
         "r3k2r/p1ppqpb1/bn2pnp1/2pP4/1p2P3/2N2N2/PPQBBPPP/R3K2R w KQkq - 0 1";
-    std::cerr << "Kiwipete depth 1 actual: " << marlin_cpp_perft(kiwipete, 1) << "\\n";
+    char moveList[512]{};\n    (void)marlin_cpp_list_moves(kiwipete, moveList, sizeof(moveList));\n    std::cerr << "Kiwipete moves: " << moveList << "\\n";\n    std::cerr << "Kiwipete depth 1 actual: " << marlin_cpp_perft(kiwipete, 1) << "\\n";
     assert(marlin_cpp_perft(kiwipete, 1) == 48);
     assert(marlin_cpp_perft(kiwipete, 2) == 2039);
     assert(marlin_cpp_perft(kiwipete, 3) == 97862);
