@@ -54,6 +54,7 @@ def main():
     parser.add_argument("--min-samples", type=int, default=3)
     parser.add_argument("--out", default="nnue/marlin-v9-opening-book.json")
     parser.add_argument("--data-attribution", default="Operator-supplied human master PGNs; verify source licence.")
+    parser.add_argument("--data-license", default="Source dataset licence(s) recorded in data attribution.")
     args = parser.parse_args()
 
     pgn_files = sorted(Path(args.pgn_dir).rglob("*.pgn"))
@@ -123,6 +124,7 @@ def main():
     payload = {
         "format": "MARLIN_OPENING_BOOK_V1",
         "model": "MARLIN V9",
+        "license": args.data_license,
         "training": {
             "games_seen": seen,
             "games_accepted": accepted,
