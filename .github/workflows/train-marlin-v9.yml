@@ -183,7 +183,7 @@ jobs:
           path = Path("nnue/marlin-v9.nnue.json")
           model = json.loads(path.read_text(encoding="utf-8"))
           assert model["format"] == "MARLIN_NNUE_V1"
-          assert model["model"] == "MARLIN V9"
+          assert model["training"]["model"] == "MARLIN V9"
           assert model["architecture"] == "768x128x32x1"
           assert model["feature_encoding"] == "stm-relative-piece-square-v1"
           training = model["training"]
