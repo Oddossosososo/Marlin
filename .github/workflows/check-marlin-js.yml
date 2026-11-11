@@ -43,8 +43,9 @@ jobs:
             training/smoke-v8.mjs \
             app.js
           do
-            echo "Checking $file"
+            echo "::group::Checking $file"
             node --input-type=module --check < "$file"
+            echo "::endgroup::"
           done
           node training/smoke-v8.mjs
           node lichess-v9-smoke-test.js
