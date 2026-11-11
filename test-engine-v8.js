@@ -41,4 +41,13 @@ searchAndPlay(
 const terminal = new Chess("7k/6Q1/5K2/8/8/8/8/8 b - - 0 1");
 assert.equal(findBestMove(terminal, 3), null, "checkmated side must have no move");
 console.log("PASS Checkmate position returns no move");
+// Reproducible speed sample for GitHub Actions and future engine comparisons.
+const benchmarkGame = new Chess();
+const benchmark = findBestMove(benchmarkGame, 5);
+assert.ok(benchmark, "benchmark position must produce a move");
+const depthsPerSecond = benchmark.depth / (benchmark.elapsedMs / 1000);
+console.log(
+  `BENCHMARK startpos: depth ${benchmark.depth} | ${benchmark.nodes} nodes | ${benchmark.nps} n/s | ${benchmark.elapsedMs} ms | ${depthsPerSecond.toFixed(2)} depths/s`
+);
+
 console.log("All MARLIN V8 tactical smoke tests passed.");
