@@ -22,14 +22,15 @@ remain usable while the native engine is developed and measured.
    ordering, quiescence and pruning) while comparing results with the JS engine.
 5. Add a UCI executable and run tactical, perft and self-play regression suites.
 6. Add a WebAssembly build and connect it to the existing browser worker.
-7. The WebAssembly workflow builds and commits `marlin-wasm.js/.wasm`; the\n   browser worker prefers this backend and falls back to V7 if it cannot load.\n8. Promote C++ only after correctness and speed benchmarks show it is ready.
+7. The WebAssembly workflow builds and commits `marlin-wasm.js/.wasm`; the browser worker prefers this backend and falls back to V7 if it cannot load.
+8. Promote C++ only after correctness and speed benchmarks show it is ready.
 
 ## Build and test
 
 ```sh
 cmake -S cpp -B build/cpp -DCMAKE_BUILD_TYPE=Release
 cmake --build build/cpp --config Release
-ctest --test-dir build/cpp --output-on-failure
+cd build/cpp && ctest -C Release --output-on-failure
 ```
 
 Do not remove the JavaScript or Rust paths until the C++ implementation passes
