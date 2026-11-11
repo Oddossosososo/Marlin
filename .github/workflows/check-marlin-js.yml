@@ -34,6 +34,9 @@ jobs:
             arena-worker.js \
             benchmark-worker.js \
             benchmark.js \
+            marlin-v9.js \
+            lichess-bot.js \
+            lichess-v9-smoke-test.js \
             training/smoke-v8.mjs \
             app.js
           do
@@ -41,3 +44,4 @@ jobs:
             node --input-type=module --check < "$file"
           done
           node training/smoke-v8.mjs
+          node lichess-v9-smoke-test.js
