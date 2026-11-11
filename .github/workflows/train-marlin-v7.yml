@@ -1,6 +1,9 @@
 name: Train and publish MARLIN V7
 
 on:
+  schedule:
+    # Run independently of the owner's computer; GitHub-hosted runners are finite jobs.
+    - cron: "17 */6 * * *"
   workflow_dispatch:
     inputs:
       master_pgn_url:
@@ -60,7 +63,7 @@ jobs:
         run: python -m pip install -r training/requirements.txt
       - name: Prepare authorised master PGNs
         env:
-          MASTER_PGN_URL: ${{ inputs.master_pgn_url }}
+          MASTER_PGN_URL: ${{ inputs.master_pgn_url || '' }}
         run: |
           mkdir -p training/gm-games training/data nnue
           if [ -n "$MASTER_PGN_URL" ]; then
@@ -84,8 +87,8 @@ jobs:
           fi
       - name: Build Stockfish-labelled master-game positions
         env:
-          MIN_ELO: ${{ inputs.min_elo }}
-          TEACHER_DEPTH: ${{ inputs.depth }}
+          MIN_ELO: ${{ inputs.min_elo || '2400' }}
+          TEACHER_DEPTH: ${{ inputs.depth || '12' }}
         run: |
           python training/generate_gm_dataset.py \
             --pgn-dir training/gm-games \
@@ -97,8 +100,8 @@ jobs:
             --out training/data/marlin-v7-masters.jsonl
       - name: Generate supplementary Stockfish teacher positions
         env:
-          GAMES: ${{ inputs.games }}
-          TEACHER_DEPTH: ${{ inputs.depth }}
+          GAMES: ${{ inputs.games || '300' }}
+          TEACHER_DEPTH: ${{ inputs.depth || '12' }}
         run: |
           python training/generate_dataset.py \
             --stockfish "$(command -v stockfish)" \
@@ -108,8 +111,8 @@ jobs:
             --out training/data/marlin-v7-teacher.jsonl
       - name: Train independent V7 NNUE
         env:
-          EPOCHS: ${{ inputs.epochs }}
-          DATA_ATTRIBUTION: ${{ inputs.data_attribution }}
+          EPOCHS: ${{ inputs.epochs || '40' }}
+          DATA_ATTRIBUTION: ${{ inputs.data_attribution || 'Operator-supplied PGN; verify source licence and provide required attribution.' }}
         run: |
           python training/train_nnue_v7.py \
             --data training/data/marlin-v7-masters.jsonl \
