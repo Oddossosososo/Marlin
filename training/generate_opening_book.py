@@ -6,6 +6,7 @@ bot-tagged games as human master games, even if their Elo headers are inflated.
 """
 import argparse
 import json
+import math
 from collections import defaultdict
 from pathlib import Path
 
@@ -112,7 +113,7 @@ def main():
             # completely overwhelm demonstrated results.
             smoothed_score = (points + 10.0) / (games + 20.0)
             weight = max(1, round(
-                100.0 * (games ** 0.5) * __import__("math").exp((smoothed_score - 0.5) * 2.0)
+                100.0 * (games ** 0.5) * math.exp((smoothed_score - 0.5) * 2.0)
             ))
             candidates.append({
                 "uci": uci,
