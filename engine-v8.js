@@ -309,7 +309,10 @@ function moveScore(move, ttMove, ply, counterMove) {
   if (move.captured) {
     const victim = VALUE[move.captured] || 0;
     const attacker = VALUE[move.piece] || 0;
-    return 800_000 + victim * 10 - attacker + staticExchangeScore(move);
+    // Keep ordering allocation-light: exact SEE generates many legal moves
+    // and is too expensive to run for every capture at every search node.
+    // MVV-LVA gives a fast first-pass ordering; quiescence retains SEE pruning.
+    return 800_000 + victim * 10 - attacker;
   }
   const key = moveKey(move);
   if (ply < MAX_PLY && killers[ply][0] === key) return 700_000;
