@@ -19,8 +19,8 @@ function runV9(wasm, fen, depth) {
     wasm._marlin_cpp_search(fenPtr, depth, outPtr, 512);
     const ms = performance.now() - start;
     const output = wasm.UTF8ToString(outPtr);
-    const nodes = Number((output.match(/\\bnodes (\\d+)/) || [])[1] || 0);
-    const reachedDepth = Number((output.match(/\\bdepth (\\d+)/) || [])[1] || 0);
+    const nodes = Number((output.match(/\bnodes (\d+)/) || [])[1] || 0);
+    const reachedDepth = Number((output.match(/\bdepth (\d+)/) || [])[1] || 0);
     const match = output.match(/^bestmove ([a-h][1-8][a-h][1-8][qrbn]?)/);
     if (!match || reachedDepth !== depth || !nodes) {
       throw new Error("V9 did not complete depth " + depth + ": " + output);
