@@ -7,4 +7,6 @@ std::uint64_t marlin_knight_attacks(std::uint64_t pieces);
 std::uint64_t marlin_king_attacks(std::uint64_t pieces);
 std::uint64_t marlin_white_pawn_attacks(std::uint64_t pawns);
 std::uint64_t marlin_black_pawn_attacks(std::uint64_t pawns);
+std::uint64_t marlin_cpp_perft(const char* fen, int depth);
+int marlin_cpp_search(const char* fen, int max_depth, char* output, int output_size);
 }
