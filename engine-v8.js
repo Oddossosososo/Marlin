@@ -609,7 +609,7 @@ export function findBestMove(game, maxDepth = 6, options = {}) {
   const result = {
     from: bestMove.from,
     to: bestMove.to,
-    promotion: bestMove.promotion || "q",
+    promotion: bestMove.promotion || null,
     score: bestScore,
     nodes: searchNodes,
     depth: depthCeiling,
