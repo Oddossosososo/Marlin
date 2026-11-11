@@ -43,14 +43,17 @@ export function selectV9OpeningMove(game) {
     game.turn() === "w" &&
     game.fen().startsWith("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
 
+  // At the untouched starting position, bypass both opening books.
+  // Let V9's search choose its best first move; this allows 1.Nc3 only when
+  // the engine itself prefers it in that exact position.
+  if (isInitialWhitePosition) return null;
+
   if (book) {
     const key = game.fen().split(" ").slice(0, 4).join(" ");
     const entries = book.positions[key] || [];
     if (entries.length) {
       const legal = game.moves({ verbose: true });
       const candidates = entries.map(entry => {
-        // b1c3 is deliberately excluded at the initial position (Van Geet).
-        if (isInitialWhitePosition && entry.uci === "b1c3") return null;
         const match = /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.exec(entry.uci || "");
         if (!match) return null;
         const move = legal.find(candidate =>
