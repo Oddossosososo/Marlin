@@ -70,11 +70,11 @@ bool attacked(const Board& b,int sq,int by){
     for(int d:KNIGHT_OFF){int from=sq+d;if(valid(from)&&b.sq[from]==by*KNIGHT)return true;}
     for(int d:KING_OFF){int from=sq+d;if(valid(from)&&b.sq[from]==by*KING)return true;}
     for(int i=0;i<8;i++){
-        int d=QUEEN_OFF[i],from=sq+d,steps=1;
+        int d=QUEEN_OFF[i],from=sq+d;
         while(valid(from)){
             int p=b.sq[from];
-            if(p){if(sign(p)==by){int t=absPiece(p);if(t==QUEEN||(steps==1&&((d==-17||d==-15||d==15||d==17)?t==BISHOP:t==ROOK)))return true;}break;}
-            from+=d;++steps;
+            if(p){if(sign(p)==by){int t=absPiece(p);bool diagonal=(d==-17||d==-15||d==15||d==17);if(t==QUEEN||(diagonal?t==BISHOP:t==ROOK))return true;}break;}
+            from+=d;
         }
     }
     return false;
