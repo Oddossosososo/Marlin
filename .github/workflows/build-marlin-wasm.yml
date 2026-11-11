@@ -28,7 +28,7 @@ jobs:
       - uses: mymindstorm/setup-emsdk@v14
       - name: Compile optimized browser engine
         run: |
-          emcc cpp/attacks.cpp cpp/search.cpp \
+          em++ cpp/attacks.cpp cpp/search.cpp \
             -std=c++17 -O3 -flto \
             -s MODULARIZE=1 \
             -s EXPORT_ES6=1 \
