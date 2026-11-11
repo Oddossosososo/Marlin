@@ -22,7 +22,7 @@ remain usable while the native engine is developed and measured.
    ordering, quiescence and pruning) while comparing results with the JS engine.
 5. Add a UCI executable and run tactical, perft and self-play regression suites.
 6. Add a WebAssembly build and connect it to the existing browser worker.
-7. Promote C++ only after correctness and speed benchmarks show it is ready.
+7. The WebAssembly workflow builds and commits `marlin-wasm.js/.wasm`; the\n   browser worker prefers this backend and falls back to V7 if it cannot load.\n8. Promote C++ only after correctness and speed benchmarks show it is ready.
 
 ## Build and test
 
