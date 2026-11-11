@@ -46,8 +46,11 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "Build optimized MARLIN C++ WebAssembly engine"
             if [ "${{ github.event_name }}" = "pull_request" ]; then
-              git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+              TARGET_REF="${{ github.event.pull_request.head.ref }}"
             else
-              git push origin "HEAD:${{ github.ref_name }}"
+              TARGET_REF="${{ github.ref_name }}"
             fi
+            git fetch origin "$TARGET_REF"
+            git rebase "origin/$TARGET_REF"
+            git push origin "HEAD:$TARGET_REF"
           fi
