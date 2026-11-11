@@ -347,6 +347,9 @@ function quiescence(game, alpha, beta, ply, remaining = 5, precomputedMoves = nu
   // Check mate/stalemate before draw claims, matching chess game-end priority.
   if (moves.length === 0) return inCheck ? -MATE + ply : 0;
   if (isAutomaticDraw(game)) return 0;
+  // Bound checking sequences at the global search horizon. In-check
+  // quiescence must still test for mate/stalemate first, then stop safely.
+  if (ply >= MAX_PLY - 1) return evaluate(game);
 
   let stand = inCheck ? -Infinity : evaluate(game);
   if (!inCheck) {
@@ -384,8 +387,15 @@ function makeNullPosition(game) {
 
 function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove = null) {
   countSearchNode();
-  if (depth <= 0) return quiescence(game, alpha, beta, ply);
   if (ply >= MAX_PLY - 1) return evaluate(game);
+
+  // Mate-distance pruning: a side cannot force mate sooner than the
+  // distance already implied by the current ply.
+  alpha = Math.max(alpha, -MATE + ply);
+  beta = Math.min(beta, MATE - ply - 1);
+  if (alpha >= beta) return alpha;
+
+  if (depth <= 0) return quiescence(game, alpha, beta, ply);
 
   const originalAlpha = alpha;
   const fen = game.fen();
