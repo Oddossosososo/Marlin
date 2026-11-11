@@ -414,7 +414,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
   if (legalMoves.length === 0) return inCheck ? -MATE + ply : 0;
   if (repetitionDraw || isAutomaticDraw(game)) return 0;
 
-  const staticEval = evaluate(game);
+  const staticEval = !inCheck && depth <= 3 ? evaluate(game) : 0;
   // Reverse futility pruning (static null-move pruning). Restrict it to
   // shallow, non-check nodes with sufficient non-pawn material to reduce
   // zugzwang risk. The margin grows with depth.
