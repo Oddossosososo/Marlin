@@ -1,0 +1,30 @@
+name: MARLIN Lichess Bot
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lichess-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Check out MARLIN
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start MARLIN V8 on Lichess
+        env:
+          LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}
+          LICHESS_USERNAME: ${{ vars.LICHESS_USERNAME }}
+          MARLIN_DEPTH: "4"
+        run: npm run lichess-bot
