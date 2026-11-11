@@ -8,6 +8,7 @@ permissions:
 
 jobs:
   lichess-bot:
+    if: github.ref == 'refs/heads/v8-development'
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
@@ -21,6 +22,11 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Check bot and engine syntax
+        run: |
+          node --check lichess-bot.js
+          node --check engine-v8.js
 
       - name: Start MARLIN V8 on Lichess
         env:
