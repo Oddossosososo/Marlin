@@ -34,9 +34,11 @@ const Z_SIDE = nextZobristKey();
 const Z_CASTLING = Array.from({ length: 4 }, nextZobristKey);
 const Z_EP_FILE = Array.from({ length: 8 }, nextZobristKey);
 const Z_HALFMOVE = Array.from({ length: 101 }, nextZobristKey);
-// Fixed-size direct-mapped transposition table. Typed arrays avoid
-// per-node Map lookups and entry-object allocations in the deepest hot path.
-const TT_SIZE = 1 << 18;
+// Fixed-size direct-mapped transposition table (~44 MiB across typed arrays).
+// The larger table retains more useful positions between search branches and
+// games while keeping per-node lookups allocation-free.
+const TT_BITS = 21;
+const TT_SIZE = 1 << TT_BITS;
 const TT_MASK = TT_SIZE - 1;
 const TT_KEYS = new Float64Array(TT_SIZE);
 const TT_DEPTH = new Uint8Array(TT_SIZE);
@@ -53,7 +55,7 @@ const PROMOTION_CODES = { q: 1, r: 2, b: 3, n: 4 };
 const PROMOTION_NAMES = [null, "q", "r", "b", "n"];
 
 function ttIndex(key) {
-  return Math.imul(key >>> 0, 0x9e3779b1) >>> 14;
+  return Math.imul(key >>> 0, 0x9e3779b1) >>> (32 - TT_BITS);
 }
 
 function squareToIndex(square) {
