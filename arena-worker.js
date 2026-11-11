@@ -1,67 +1,10 @@
 import { Chess } from "https://esm.sh/chess.js@1.4.0";
 import { findBestMove as findV8Move, initialiseV8 } from "./engine-v8.js";
-import createMarlinModule from "./marlin-wasm.js";
+import { searchV9, v9NnueStatus } from "./marlin-v9.js";
 import { initialiseV9OpeningBook, selectV9OpeningMove } from "./opening-book-v9.js";
 
-let wasmPromise = null;
-
-async function getWasm() {
-  if (!wasmPromise) {
-    wasmPromise = createMarlinModule().catch(error => {
-      wasmPromise = null;
-      throw error;
-    });
-  }
-  return wasmPromise;
-}
-
 async function findV9Move(fen, requestedDepth, reportProgress) {
-  reportProgress({ stage: "initialising", depth: 0, nodes: 0 });
-  const wasm = await getWasm();
-  const fenSize = new TextEncoder().encode(fen).length + 1;
-  const fenPtr = wasm._malloc(fenSize);
-  const outPtr = wasm._malloc(512);
-  const startedAt = performance.now();
-
-  try {
-    wasm.stringToUTF8(fen, fenPtr, fenSize);
-    const depth = Math.max(1, Math.min(12, Math.floor(Number(requestedDepth) || 6)));
-    reportProgress({ stage: "thinking", depth: 0, nodes: 0 });
-    wasm._marlin_cpp_search(fenPtr, depth, outPtr, 512);
-    const output = wasm.UTF8ToString(outPtr);
-    const match = output.match(/^bestmove ([a-h][1-8][a-h][1-8][qrbn]?)/);
-    if (!match) throw new Error("MARLIN V9 returned no move: " + output);
-
-    const nodes = Number((output.match(/\bnodes (\d+)/) || [])[1] || 0);
-    const reachedDepth = Number((output.match(/\bdepth (\d+)/) || [])[1] || 0);
-    if (reachedDepth !== depth) {
-      throw new Error("MARLIN V9 reached depth " + reachedDepth + " instead of " + depth + ".");
-    }
-    const elapsedMs = Math.max(1, Math.round(performance.now() - startedAt));
-    const uci = match[1];
-    const result = {
-      from: uci.slice(0, 2),
-      to: uci.slice(2, 4),
-      promotion: uci[4] || "q",
-      source: "cpp-wasm-v9",
-      depth: reachedDepth,
-      nodes,
-      elapsedMs,
-      nps: Math.round(nodes * 1000 / elapsedMs)
-    };
-    reportProgress({
-      stage: "complete",
-      depth: reachedDepth,
-      completedDepth: reachedDepth,
-      nodes,
-      elapsedMs,
-      nps: result.nps
-    });
-    return result;
-  } finally {
-    wasm._free(fenPtr);
-    wasm._free(outPtr);
-  }
+  return searchV9(fen, requestedDepth, reportProgress);
 }
 
 self.onmessage = async (event) => {
@@ -81,6 +24,7 @@ self.onmessage = async (event) => {
     if (version === "v9") {
       await initialiseV9OpeningBook();
       move = selectV9OpeningMove(game) || await findV9Move(game.fen(), depth, reportProgress);
+      initialised = v9NnueStatus();
       if (move.source === "gm-opening-book" || move.source === "curated-opening-book") {
         reportProgress({ stage: "opening-book", depth: 0, nodes: 0 });
       }
