@@ -286,15 +286,20 @@ int negamax(Board& b,int depth,int alpha,int beta,int ply,bool allowNull=true){
         if(nullScore>=beta)return beta;
     }
     order(b,moves,ttMove,ply);int best=-INF;Move bestMove=moves[0];int index=0;std::array<Move,64> quietTried{};int quietCount=0;
+    // Give checked nodes one extra ply so forced evasions are not evaluated
+    // immediately at the horizon. This is especially useful for forcing
+    // queen checks that can otherwise hide a follow-up material tactic.
+    const int checkExtension=(check&&depth>=2)?1:0;
+    const int childDepth=depth-1+checkExtension;
     for(const Move&m:moves){
         bool quiet=quietMove(b,m);if(quiet&&quietCount<int(quietTried.size()))quietTried[quietCount++]=m;
         Undo u=makeMove(b,m);int score;
-        if(index==0)score=-negamax(b,depth-1,-beta,-alpha,ply+1);
+        if(index==0)score=-negamax(b,childDepth,-beta,-alpha,ply+1);
         else {
             int reduction=(!check&&depth>=3&&index>=3&&quiet)?1+((depth>=6&&index>=8)?1:0):0;
-            score=-negamax(b,depth-1-reduction,-alpha-1,-alpha,ply+1);
-            if(reduction>0&&score>alpha)score=-negamax(b,depth-1,-alpha-1,-alpha,ply+1);
-            if(score>alpha&&score<beta)score=-negamax(b,depth-1,-beta,-alpha,ply+1);
+            score=-negamax(b,childDepth-reduction,-alpha-1,-alpha,ply+1);
+            if(reduction>0&&score>alpha)score=-negamax(b,childDepth,-alpha-1,-alpha,ply+1);
+            if(score>alpha&&score<beta)score=-negamax(b,childDepth,-beta,-alpha,ply+1);
         }
         undoMove(b,m,u);++index;
         if(score>best){best=score;bestMove=m;}if(score>alpha)alpha=score;
@@ -353,10 +358,14 @@ extern "C" int marlin_cpp_search(const char* fen,int maxDepth,char* output,int o
     if(!output||outputSize<8)return -1;Board b;if(!parseFen(fen,b)){std::strncpy(output,"bestmove 0000",outputSize-1);output[outputSize-1]=0;return -1;}
     std::vector<Move> moves;legalMoves(b,moves,false);if(moves.empty()){std::strncpy(output,"bestmove 0000",outputSize-1);output[outputSize-1]=0;return 0;}
     nodes=0;Move best=moves[0];int bestScore=0;int depthLimit=std::max(1,std::min(12,maxDepth));
+    // The root loop searches moves directly instead of going through
+    // negamax(), so explicitly extend a root position that begins in check.
+    const int rootCheckExtension=inCheck(b,b.side)?1:0;
     for(int depth=1;depth<=depthLimit;depth++){
         int alpha=-INF,beta=INF,iterationScore=-INF;Move iterationBest=best;
         order(b,moves,best,0);
-        for(const Move&m:moves){Undo u=makeMove(b,m);int score=-negamax(b,depth-1,-beta,-alpha,1);undoMove(b,m,u);if(score>iterationScore){iterationScore=score;iterationBest=m;}if(score>alpha)alpha=score;}
+        const int rootChildDepth=depth-1+rootCheckExtension;
+        for(const Move&m:moves){Undo u=makeMove(b,m);int score=-negamax(b,rootChildDepth,-beta,-alpha,1);undoMove(b,m,u);if(score>iterationScore){iterationScore=score;iterationBest=m;}if(score>alpha)alpha=score;}
         best=iterationBest;bestScore=iterationScore;
     }
     std::string result="bestmove "+uci(best)+" score "+std::to_string(bestScore)+" depth "+std::to_string(depthLimit)+" nodes "+std::to_string(nodes);
