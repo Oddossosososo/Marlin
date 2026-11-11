@@ -23,9 +23,24 @@ async function request(path, options = {}) {
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    throw new Error(`Lichess API ${response.status} on ${path}: ${detail.slice(0, 300)}`);
+    const error = new Error(`Lichess API ${response.status} on ${path}: ${detail.slice(0, 300)}`);
+    error.status = response.status;
+    error.retryAfter = response.headers.get("retry-after");
+    throw error;
   }
   return response;
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function retryDelay(error, attempt) {
+  const retryAfter = Number(error?.retryAfter);
+  if (Number.isFinite(retryAfter) && retryAfter > 0) {
+    return Math.min(30000, Math.max(1000, retryAfter * 1000));
+  }
+  return Math.min(15000, 1000 * (2 ** Math.min(attempt - 1, 4)));
 }
 
 async function readNdjson(response, onObject) {
@@ -34,6 +49,19 @@ async function readNdjson(response, onObject) {
   const decoder = new TextDecoder();
   let pending = "";
 
+  async function processLine(line) {
+    if (!line.trim()) return;
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch (error) {
+      console.error("Ignoring malformed Lichess stream event:", error?.message || String(error));
+      return;
+    }
+    // Let handler failures escape so the owning stream can reconnect.
+    await onObject(event);
+  }
+
   try {
     while (true) {
       const { value, done } = await reader.read();
@@ -41,23 +69,10 @@ async function readNdjson(response, onObject) {
       pending += decoder.decode(value, { stream: true });
       const lines = pending.split("\n");
       pending = lines.pop() || "";
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          await onObject(JSON.parse(line));
-        } catch (error) {
-          console.error("Lichess stream event error:", error?.message || String(error));
-        }
-      }
+      for (const line of lines) await processLine(line);
     }
     pending += decoder.decode();
-    if (pending.trim()) {
-      try {
-        await onObject(JSON.parse(pending));
-      } catch (error) {
-        console.error("Final Lichess event error:", error?.message || String(error));
-      }
-    }
+    if (pending.trim()) await processLine(pending);
   } finally {
     reader.releaseLock();
   }
@@ -130,37 +145,72 @@ async function handleGame(gameId, botId) {
   let lastMoves = null;
   let initialFen = "startpos";
   let botColor = null;
+  let finished = false;
+  let failures = 0;
 
-  try {
-    const response = await request(`/bot/game/stream/${encodeURIComponent(gameId)}`, {
-      headers: { Accept: "application/x-ndjson" }
-    });
+  while (!finished) {
+    try {
+      const response = await request(`/bot/game/stream/${encodeURIComponent(gameId)}`, {
+        headers: { Accept: "application/x-ndjson" }
+      });
 
-    await readNdjson(response, async event => {
-      if (event.type === "gameFull") {
-        const whiteId = (event.white?.id || "").toLowerCase();
-        const blackId = (event.black?.id || "").toLowerCase();
-        botColor = whiteId === botId ? "w" : blackId === botId ? "b" : null;
+      await readNdjson(response, async event => {
+        if (event.type === "gameFull") {
+          const whiteId = (event.white?.id || "").toLowerCase();
+          const blackId = (event.black?.id || "").toLowerCase();
+          botColor = whiteId === botId ? "w" : blackId === botId ? "b" : null;
 
-        if (!botColor && USERNAME) {
-          botColor = whiteId === USERNAME ? "w" : blackId === USERNAME ? "b" : null;
+          if (!botColor && USERNAME) {
+            botColor = whiteId === USERNAME ? "w" : blackId === USERNAME ? "b" : null;
+          }
+          if (!botColor) {
+            console.error("Could not identify MARLIN's colour; ending game stream", gameId);
+            finished = true;
+            return;
+          }
+
+          initialFen = event.initialFen || "startpos";
+          if (event.state?.status !== "started") {
+            finished = true;
+            return;
+          }
+          await playState(event.state);
+        } else if (event.type === "gameState") {
+          if (event.status !== "started") {
+            finished = true;
+            console.log(`Game finished: ${gameId} (${event.status || "unknown status"})`);
+            return;
+          }
+          await playState(event);
         }
-        if (!botColor) {
-          console.error("Could not identify MARLIN's colour; skipping game", gameId);
-          return;
-        }
+      });
 
-        initialFen = event.initialFen || "startpos";
-        await playState(event.state);
-      } else if (event.type === "gameState") {
-        await playState(event);
+      if (!finished) {
+        throw new Error("Lichess closed the game stream before sending a final game state.");
       }
-    });
+    } catch (error) {
+      if (error.status === 401 || error.status === 403) {
+        throw new Error(
+          `Lichess refused game access (${error.status}). Check that LICHESS_TOKEN is valid, has the bot:play scope, and belongs to the BOT account. Original error: ${error.message}`
+        );
+      }
+      if (error.status === 404) {
+        console.log(`Game ${gameId} is no longer available; stopping its stream.`);
+        finished = true;
+        continue;
+      }
 
-    console.log(`Game stream ended: ${gameId}`);
-  } catch (error) {
-    console.error(`Game ${gameId} stopped:`, error?.message || String(error));
+      failures += 1;
+      const delay = retryDelay(error, failures);
+      console.error(
+        `Game stream ${gameId} disconnected; reconnecting in ${delay} ms:`,
+        error?.message || String(error)
+      );
+      await wait(delay);
+    }
   }
+
+  console.log(`Stopped watching Lichess game ${gameId}`);
 
   async function playState(state) {
     if (!state || state.status !== "started" || !botColor) return;
@@ -171,8 +221,7 @@ async function handleGame(gameId, botId) {
     try {
       game = parsePosition(initialFen, movesText);
     } catch (error) {
-      console.error("Could not rebuild Lichess position:", error?.message || String(error));
-      return;
+      throw new Error("Could not rebuild Lichess position: " + (error?.message || String(error)));
     }
 
     if (game.turn() !== botColor || game.isGameOver()) {
@@ -184,24 +233,30 @@ async function handleGame(gameId, botId) {
     try {
       await makeBotMove(game, gameId);
     } catch (error) {
-      // Rebuild and retry from the next gameState if the opponent moved while
-      // V9 was searching, or if Lichess rejected a stale move.
+      // Force a fresh gameFull snapshot before retrying a rejected or stale move.
       lastMoves = null;
-      console.error("V9 move was not accepted; waiting for the next game state:", error?.message || String(error));
+      throw error;
     }
   }
 }
 
 async function main() {
-  console.log("Initialising MARLIN V9 C++ WebAssembly…");
-  await initialiseV9();
-
+  // Verify Lichess credentials before spending time initialising WebAssembly.
   const accountResponse = await request("/account");
   const account = await accountResponse.json();
   const botId = (account.id || USERNAME).toLowerCase();
   if (!botId) throw new Error("Could not identify the Lichess account.");
 
-  console.log(`Connected to Lichess as ${account.username || botId}`);
+  if (account.title !== "BOT") {
+    throw new Error(
+      `Lichess account @${account.username || botId} is not a BOT account. The Lichess Bot API only works with BOT accounts. Use a dedicated bot account, upgrade it through Lichess's Bot Account Upgrade page, and create a token with the bot:play scope. Do not upgrade a personal playing account.`
+    );
+  }
+
+  console.log(`Verified Lichess BOT account: ${account.username || botId}`);
+  console.log("Initialising MARLIN V9 C++ WebAssembly…");
+  await initialiseV9();
+
   const bookInfo = await initialiseV9OpeningBook();
   const nnueInfo = v9NnueStatus();
   console.log(`MARLIN V9 ready at depth ${DEPTH}. NNUE: ${nnueInfo.enabled ? "enabled" : "handcrafted fallback"}. GM book positions: ${bookInfo.positions || 0}.`);
@@ -237,15 +292,22 @@ async function main() {
           const gameId = event.game.id;
           if (!activeGames.has(gameId)) {
             activeGames.add(gameId);
-            handleGame(gameId, botId).finally(() => activeGames.delete(gameId));
+            handleGame(gameId, botId)
+              .catch(error => console.error(`Game ${gameId} failed:`, error?.message || String(error)))
+              .finally(() => activeGames.delete(gameId));
           }
         }
       });
       console.log("Lichess event stream ended; reconnecting…");
     } catch (error) {
       console.error("Lichess connection error:", error?.message || String(error));
+      if (error.status === 401 || error.status === 403) {
+        throw new Error(
+          `Lichess rejected the event stream (${error.status}). Check the LICHESS_TOKEN secret and confirm it has bot:play scope for the BOT account. Original error: ${error.message}`
+        );
+      }
     }
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await wait(3000);
   }
 }
 
