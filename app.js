@@ -160,7 +160,7 @@ function getEngineMove(depth) {
           const depth = Number(event.data.depth || 0);
           const nodes = Number(event.data.nodes || 0).toLocaleString();
           const nps = Number(event.data.nps || 0).toLocaleString();
-          thinkingEl.textContent = "MARLIN V8 · DEPTH " + depth + " · " + nodes + " NODES · " + nps + " NPS";
+          thinkingEl.textContent = "MARLIN V7 · DEPTH " + depth + " · " + nodes + " NODES · " + nps + " NPS";
           return;
         }
         const pending = pendingEngineRequest;
@@ -206,11 +206,11 @@ async function makeEngineMove() {
     );
     if (!legalMove) throw new Error("MARLIN returned a move that is not legal in this position.");
 
-    if (candidate.source === "syzygy-7-man") engineStatus = "MARLIN V8 · SYZYGY 6/7-MAN";
-    else if (candidate.source === "master-book") engineStatus = "MARLIN V8 · MASTER OPENING BOOK";
-    else if (candidate.source === "curated-book" || candidate.source === "opening-book") engineStatus = "MARLIN V8 · CURATED OPENING BOOK";
-    else if (candidate.source === "search-fallback") engineStatus = "MARLIN V8 · SEARCH FALLBACK";
-    else engineStatus = (result.nnue ? "MARLIN V8 · NNUE ACTIVE" : "MARLIN V8 · HANDCRAFTED EVAL") +
+    if (candidate.source === "syzygy-7-man") engineStatus = "MARLIN V7 · SYZYGY 6/7-MAN";
+    else if (candidate.source === "master-book") engineStatus = "MARLIN V7 · MASTER OPENING BOOK";
+    else if (candidate.source === "curated-book" || candidate.source === "opening-book") engineStatus = "MARLIN V7 · CURATED OPENING BOOK";
+    else if (candidate.source === "search-fallback") engineStatus = "MARLIN V7 · SEARCH FALLBACK";
+    else engineStatus = (result.nnue ? "MARLIN V7 · NNUE ACTIVE" : "MARLIN V7 · HANDCRAFTED EVAL") +
       " · " + Number(result.nodes || 0).toLocaleString() + " NODES · " +
       Number(result.nps || 0).toLocaleString() + " NPS";
 
@@ -423,15 +423,15 @@ function getArenaPgn() {
     return "";
   }
   const raw = game.pgn({ maxWidth: 100 });
-  const v6IsWhite = lastArenaV7Color === "w";
-  const whiteName = v6IsWhite ? "Marlin V8" : "Marlin V8";
-  const blackName = v6IsWhite ? "Marlin V8" : "Marlin V8";
+  const v7IsWhite = lastArenaV7Color === "w";
+  const whiteName = v7IsWhite ? "Marlin V7" : "Marlin V8";
+  const blackName = v7IsWhite ? "Marlin V8" : "Marlin V7";
   const result = game.isCheckmate()
     ? (game.turn() === "w" ? "0-1" : "1-0")
     : (game.isDraw() || game.isStalemate() || game.history().length >= 240 ? "1/2-1/2" : "*");
   let body = raw.replace(/^\[[^\n]*\]\s*\n/gm, "").trim();
   const headers = [
-    '[Event "Marlin V8 vs V6 Arena"]',
+    '[Event "Marlin V8 vs V7 Arena"]',
     '[Site "https://oddossosososo.github.io/Marlin/"]',
     '[Annotator "Marlin Chess Engine"]',
     '[White "' + whiteName + '"]',
