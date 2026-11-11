@@ -2,7 +2,7 @@ name: Train MARLIN V9 from GM games
 
 on:
   schedule:
-    - cron: "42 */6 * * *"
+    - cron: "17 4 * * 1"
   workflow_dispatch:
     inputs:
       master_pgn_url:
@@ -57,8 +57,8 @@ jobs:
           if [ -n "$MASTER_PGN_URL" ] || find training/gm-games -type f -name '*.pgn' -print -quit 2>/dev/null | grep -q .; then
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "No authorised GM PGNs are configured; scheduled V9 training is skipped."
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "No custom PGN supplied; automatic Lichess broadcast download is enabled."
           fi
 
   train:
@@ -98,6 +98,19 @@ jobs:
                 cp /tmp/marlin-v9-master-source training/gm-games/master-games.pgn
                 ;;
             esac
+          elif ! find training/gm-games -type f -name '*.pgn' -print -quit | grep -q .; then
+            # Official Lichess broadcasts are CC BY-SA 4.0. The index list is
+            # newest-first and is refreshed as monthly tournament PGNs arrive.
+            curl --fail --location --retry 3 https://database.lichess.org/broadcast/list.txt -o /tmp/lichess-broadcast-list.txt
+            ARCHIVE_URL="$(head -n 1 /tmp/lichess-broadcast-list.txt | tr -d '\\r')"
+            case "$ARCHIVE_URL" in
+              https://database.lichess.org/broadcast/*.pgn.zst) ;;
+              *) echo "Unexpected Lichess broadcast archive URL."; exit 1 ;;
+            esac
+            echo "Downloading Lichess archive: $ARCHIVE_URL"
+            curl --fail --location --retry 3 "$ARCHIVE_URL" -o /tmp/marlin-v9-broadcast.pgn.zst
+            zstd --test /tmp/marlin-v9-broadcast.pgn.zst
+            zstd --decompress --stdout /tmp/marlin-v9-broadcast.pgn.zst > training/gm-games/lichess-broadcasts.pgn
           fi
           find training/gm-games -type f -name '*.pgn' -print
       - name: Verify bot-tagged games are excluded
@@ -128,7 +141,7 @@ jobs:
       - name: Build V9 opening book from the same GM games
         env:
           MIN_ELO: ${{ inputs.min_elo || '2400' }}
-          DATA_ATTRIBUTION: ${{ inputs.data_attribution || 'Operator-supplied human master PGNs; verify source licence.' }}
+          DATA_ATTRIBUTION: ${{ inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
         run: |
           python training/generate_opening_book.py \
             --pgn-dir training/gm-games \
