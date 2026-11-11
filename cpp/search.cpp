@@ -228,6 +228,12 @@ uint64_t perft(Board& b,int depth){
 std::string uci(const Move&m){if(m.from<0)return "0000";std::string s=squareName(m.from)+squareName(m.to);if(m.promo){const char names[]=" pnbrqk";s+=names[m.promo];}return s;}
 }
 
+extern "C" int marlin_cpp_list_moves(const char* fen,char* output,int outputSize){
+    if(!output||outputSize<2)return -1;Board b;if(!parseFen(fen,b))return -1;
+    std::vector<Move> moves;legalMoves(b,moves,false);std::string result;
+    for(const Move& m:moves){if(!result.empty())result+=" ";result+=uci(m);}
+    std::strncpy(output,result.c_str(),outputSize-1);output[outputSize-1]=0;return int(moves.size());
+}
 extern "C" uint64_t marlin_cpp_perft(const char* fen,int depth){
     Board b;if(!parseFen(fen,b)||depth<0||depth>8)return 0;return perft(b,depth);
 }
