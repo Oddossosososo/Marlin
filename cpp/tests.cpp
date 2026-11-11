@@ -45,7 +45,7 @@ int main() {
     assert(marlin_cpp_perft(start, 3) == 8902);
 
     const char* kiwipete =
-        "r3k2r/p1ppqpb1/bn2pnp1/2pP4/1p2P3/2N2N2/PPQBBPPP/R3K2R w KQkq - 0 1";
+        "r3k2r/p1ppqpb1/bn2pnp1/2pP4/1p2P3/2N2N2/PPQ1BPPP/R1B1K2R w KQkq - 0 1";
     char moveList[512]{};
     (void)marlin_cpp_list_moves(kiwipete, moveList, sizeof(moveList));
     std::cerr << "Kiwipete moves: " << moveList << "\n";
