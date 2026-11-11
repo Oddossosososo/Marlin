@@ -1,32 +1,18 @@
 # MARLIN C++ Engine
 
-This directory contains the new native C++ engine, developed alongside the existing
-JavaScript V8 engine. The JavaScript engine remains the reference implementation
-until the C++ engine passes correctness tests and demonstrates measured strength.
+The native C++ engine is being developed alongside the JavaScript V8 engine. V8 remains the production/reference engine until the C++ implementation passes correctness tests and measured match-strength tests.
 
-## Current milestone
-
-The first milestone is the low-level bitboard foundation:
-
-- A1 = bit 0, H8 = bit 63.
-- Pawn, knight and king attack masks.
-- Blocker-aware rook, bishop and queen attack generation.
-- Bit counting and least-significant-bit extraction.
-
-This is **not yet a complete chess engine**. Legal move generation, FEN parsing,
-make/unmake, check detection, castling, en passant, promotions, search and UCI
-will be added in later milestones.
+## Implemented
+- 64-bit bitboard attack primitives.
+- FEN parsing and serialization.
+- Legal move generation, including castling, en passant and promotions.
+- Make/unmake with reversible state.
+- Perft validation against standard start-position and Kiwipete counts.
 
 ## Build and test
-
-Requires a C++20 compiler:
-
 ```sh
-g++ -std=c++20 -O2 -Wall -Wextra -Werror -pedantic \
-  -Icpp/include cpp/src/bitboard.cpp cpp/tests/bitboard_tests.cpp \
-  -o /tmp/marlin-bitboard-tests
-/tmp/marlin-bitboard-tests
+g++ -std=c++20 -O3 -DNDEBUG -Wall -Wextra -Werror -pedantic -Icpp/include cpp/src/bitboard.cpp cpp/src/board.cpp cpp/tests/bitboard_tests.cpp cpp/tests/board_tests.cpp -o /tmp/marlin-tests
+/tmp/marlin-tests
 ```
 
-
-The C++ core is validated by the `MARLIN C++ Core Checks` GitHub Actions workflow.
+GitHub Actions runs the C++ correctness suite. This is a move-generation foundation, not yet the complete search engine or a replacement for the Lichess bot.
