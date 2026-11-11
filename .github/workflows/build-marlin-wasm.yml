@@ -24,6 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
       - uses: mymindstorm/setup-emsdk@v14
       - name: Compile optimized browser engine
