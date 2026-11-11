@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "lichess-bot": "node lichess-bot.js",
-    "perft:v8": "node perft-v8.js"
+    "perft:v8": "node perft-v8.js",
+    "test:v8": "node test-engine-v8.js"
   },
   "dependencies": {
     "chess.js": "^1.4.0"
