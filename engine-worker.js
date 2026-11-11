@@ -61,6 +61,7 @@ self.onmessage = async (event) => {
       self.postMessage({
         requestId,
         type: "progress",
+        engine: "cpp",
         stage: "depth-complete",
         depth: move.depth,
         completedDepth: move.depth,
@@ -73,7 +74,7 @@ self.onmessage = async (event) => {
       initialised = await initialiseV7();
       try {
         move = await findPolicyMove(game, depth, {
-          onProgress: details => self.postMessage({ requestId, type: "progress", ...details })
+          onProgress: details => self.postMessage({ requestId, type: "progress", engine: "v7", ...details })
         });
       } catch (policyError) {
         console.warn("MARLIN V7 policy unavailable; using V7 core search:", policyError);
