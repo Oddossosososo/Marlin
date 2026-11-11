@@ -164,18 +164,19 @@ void order(const Board& b,std::vector<Move>& moves,const Move& ttMove){
     });
 }
 int qsearch(Board& b,int alpha,int beta,int ply){
-    ++nodes;if(ply>=MAX_PLY)return evaluate(b);bool check=inCheck(b,b.side);int stand=check?-INF:evaluate(b);if(!check){if(stand>=beta)return beta;if(stand>alpha)alpha=stand;}
-    std::vector<Move> moves;legalMoves(b,moves,!check);if(check&&moves.empty())return -MATE+ply;
+    ++nodes;if(ply>=MAX_PLY)return evaluate(b);bool check=inCheck(b,b.side);int stand=check?-INF:evaluate(b);
+    std::vector<Move> moves;legalMoves(b,moves,false);if(moves.empty())return check?-MATE+ply:0;
+    if(!check){if(stand>=beta)return beta;if(stand>alpha)alpha=stand;moves.erase(std::remove_if(moves.begin(),moves.end(),[&](const Move&m){return !b.sq[m.to]&&!(m.flags&2)&&!m.promo;}),moves.end());}
     for(const Move&m:moves){Undo u=makeMove(b,m);int score=-qsearch(b,-beta,-alpha,ply+1);undoMove(b,m,u);if(score>=beta)return beta;if(score>alpha)alpha=score;}
     return alpha;
 }
 int negamax(Board& b,int depth,int alpha,int beta,int ply){
     ++nodes;if(ply>=MAX_PLY)return evaluate(b);if(depth<=0)return qsearch(b,alpha,beta,ply);
-    if(b.halfmove>=100)return 0;
     uint64_t key=hash(b);Entry& e=tt[key&(tt.size()-1)];Move ttMove=e.key==key?e.move:Move{};
     int original=alpha;if(e.key==key&&e.depth>=depth){int s=scoreTT(e.score,ply);if(e.flag==0)return s;if(e.flag==1&&s>=beta)return s;if(e.flag==2&&s<=alpha)return s;}
     std::vector<Move> moves;legalMoves(b,moves,false);
     if(moves.empty())return inCheck(b,b.side)?-MATE+ply:0;
+    if(b.halfmove>=100)return 0;
     order(b,moves,ttMove);int best=-INF;Move bestMove=moves[0];int index=0;
     for(const Move&m:moves){Undo u=makeMove(b,m);int score;
         if(index++==0)score=-negamax(b,depth-1,-beta,-alpha,ply+1);
