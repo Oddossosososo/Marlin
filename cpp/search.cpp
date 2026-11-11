@@ -136,6 +136,11 @@ void legalMoves(Board& b,std::vector<Move>& out,bool capturesOnly=false){
     std::vector<Move> candidates;pseudoMoves(b,candidates,capturesOnly);out.clear();out.reserve(candidates.size());
     for(const Move& m:candidates){Undo u=makeMove(b,m);bool legal=!inCheck(b,-b.side);undoMove(b,m,u);if(legal)out.push_back(m);}
 }
+bool hasNullMoveMaterial(const Board& b){
+    int material=0;
+    for(int s=0;s<128;s++){if(!valid(s)){s+=7;continue;}int p=b.sq[s];if(p&&sign(p)==b.side&&absPiece(p)!=PAWN&&absPiece(p)!=KING){material+=VALUE[absPiece(p)];if(material>=VALUE[ROOK])return true;}}
+    return false;
+}
 int evaluate(const Board& b){
     int score=0;
     for(int s=0;s<128;s++){if(!valid(s)){s+=7;continue;}int p=b.sq[s];if(!p)continue;int t=absPiece(p),r=rankOf(s),f=fileOf(s);
@@ -165,24 +170,54 @@ void order(const Board& b,std::vector<Move>& moves,const Move& ttMove){
     });
 }
 int qsearch(Board& b,int alpha,int beta,int ply){
-    ++nodes;if(ply>=MAX_PLY)return evaluate(b);bool check=inCheck(b,b.side);int stand=check?-INF:evaluate(b);
-    std::vector<Move> moves;legalMoves(b,moves,false);if(moves.empty())return check?-MATE+ply:0;
-    if(!check){if(stand>=beta)return beta;if(stand>alpha)alpha=stand;moves.erase(std::remove_if(moves.begin(),moves.end(),[&](const Move&m){return !b.sq[m.to]&&!(m.flags&2)&&!m.promo;}),moves.end());}
+    ++nodes;if(ply>=MAX_PLY)return evaluate(b);
+    bool check=inCheck(b,b.side);int stand=check?-INF:evaluate(b);
+    std::vector<Move> moves;
+    legalMoves(b,moves, !check);
+    if(moves.empty()){
+        if(check)return -MATE+ply;
+        // No legal captures is not necessarily stalemate; verify quiet moves.
+        legalMoves(b,moves,false);
+        if(moves.empty())return 0;
+        if(stand>=beta)return beta;
+        return std::max(alpha,stand);
+    }
+    if(!check){if(stand>=beta)return beta;if(stand>alpha)alpha=stand;}
     for(const Move&m:moves){Undo u=makeMove(b,m);int score=-qsearch(b,-beta,-alpha,ply+1);undoMove(b,m,u);if(score>=beta)return beta;if(score>alpha)alpha=score;}
     return alpha;
 }
-int negamax(Board& b,int depth,int alpha,int beta,int ply){
+int negamax(Board& b,int depth,int alpha,int beta,int ply,bool allowNull=true){
     ++nodes;if(ply>=MAX_PLY)return evaluate(b);if(depth<=0)return qsearch(b,alpha,beta,ply);
     uint64_t key=hash(b);Entry& e=tt[key&(tt.size()-1)];Move ttMove=e.key==key?e.move:Move{};
     int original=alpha;if(e.key==key&&e.depth>=depth){int s=scoreTT(e.score,ply);if(e.flag==0)return s;if(e.flag==1&&s>=beta)return s;if(e.flag==2&&s<=alpha)return s;}
     std::vector<Move> moves;legalMoves(b,moves,false);
-    if(moves.empty())return inCheck(b,b.side)?-MATE+ply:0;
+    bool check=inCheck(b,b.side);
+    if(moves.empty())return check?-MATE+ply:0;
     if(b.halfmove>=100)return 0;
+    // Null-move pruning: a reduced pass search can prove many quiet positions
+    // are already above beta, avoiding a large subtree. Disable in check and
+    // in pawn-only/minor-only endings where zugzwang is common.
+    if(allowNull&&depth>=3&&!check&&beta<MATE-MAX_PLY&&hasNullMoveMaterial(b)){
+        int oldSide=b.side,oldEp=b.ep,oldHalfmove=b.halfmove,oldFullmove=b.fullmove;
+        b.side=-b.side;b.ep=-1;++b.halfmove;if(oldSide<0)++b.fullmove;
+        int reduction=2+depth/4;
+        int nullScore=-negamax(b,depth-1-reduction,-beta,-beta+1,ply+1,false);
+        b.side=oldSide;b.ep=oldEp;b.halfmove=oldHalfmove;b.fullmove=oldFullmove;
+        if(nullScore>=beta)return beta;
+    }
     order(b,moves,ttMove);int best=-INF;Move bestMove=moves[0];int index=0;
-    for(const Move&m:moves){Undo u=makeMove(b,m);int score;
-        if(index++==0)score=-negamax(b,depth-1,-beta,-alpha,ply+1);
-        else {score=-negamax(b,depth-1,-alpha-1,-alpha,ply+1);if(score>alpha&&score<beta)score=-negamax(b,depth-1,-beta,-alpha,ply+1);}
-        undoMove(b,m,u);if(score>best){best=score;bestMove=m;}if(score>alpha)alpha=score;if(alpha>=beta)break;
+    for(const Move&m:moves){
+        bool quiet=!b.sq[m.to]&&!(m.flags&2)&&!m.promo;
+        Undo u=makeMove(b,m);int score;
+        if(index==0)score=-negamax(b,depth-1,-beta,-alpha,ply+1);
+        else {
+            int reduction=(!check&&depth>=3&&index>=3&&quiet)?1+((depth>=6&&index>=8)?1:0):0;
+            score=-negamax(b,depth-1-reduction,-alpha-1,-alpha,ply+1);
+            if(reduction>0&&score>alpha)score=-negamax(b,depth-1,-alpha-1,-alpha,ply+1);
+            if(score>alpha&&score<beta)score=-negamax(b,depth-1,-beta,-alpha,ply+1);
+        }
+        undoMove(b,m,u);++index;
+        if(score>best){best=score;bestMove=m;}if(score>alpha)alpha=score;if(alpha>=beta)break;
     }
     e.key=key;e.depth=depth;e.score=scoreTT(best,ply);e.flag=best<=original?2:best>=beta?1:0;e.move=bestMove;return best;
 }
