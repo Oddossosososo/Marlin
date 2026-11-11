@@ -1,0 +1,26 @@
+{
+  "engine": "MARLIN V8",
+  "status": "development",
+  "stable_champion": "MARLIN V7",
+  "promotion_policy": "V8 must beat the current champion in a completed paired match set and must not be vetoed.",
+  "priorities": [
+    "profile and optimise V7 search hot paths",
+    "add deterministic tactical and search regression tests",
+    "measure playing strength using paired colour-swapped games",
+    "keep model checkpoints immutable during matches"
+  ],
+  "validation": {
+    "required": [
+      "legal-move validation",
+      "tactical regression suite",
+      "paired games with colours swapped",
+      "identical search limits for both engines",
+      "recorded checkpoint identifiers",
+      "reproducible match result"
+    ],
+    "promotion_threshold": "challenger_score > 0.5",
+    "draw_policy": "champion retains title",
+    "veto_policy": "veto blocks current challenger promotion and can be cleared"
+  },
+  "rating_claim_policy": "Do not claim a rating until a statistically meaningful match set against fixed reference engines is complete."
+}
