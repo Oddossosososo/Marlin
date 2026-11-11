@@ -49,7 +49,7 @@ bool parseFen(const char* input,Board& b){
         char c=fen[pos++];
         if(c=='/'){if(file!=8||rank==0)return false;--rank;file=0;}
         else if(c>='1'&&c<='8')file+=c-'0';
-        else {int p=pieceFromChar(c);if(!p||file>=8)return false;b.sq[rank*16+file++]=p;if(p==KING){if(p>0)b.whiteKing=rank*16+file-1;else b.blackKing=rank*16+file-1;}}
+        else {int p=pieceFromChar(c);if(!p||file>=8)return false;b.sq[rank*16+file++]=p;if(absPiece(p)==KING){if(p>0)b.whiteKing=rank*16+file-1;else b.blackKing=rank*16+file-1;}}
         if(file>8)return false;
     }
     if(rank!=0||file!=8||pos>=fen.size())return false;
