@@ -1,24 +1,46 @@
 import assert from "node:assert/strict";
 import { Chess } from "chess.js";
 import { initialiseV9OpeningBook, selectV9OpeningMove } from "./opening-book-v9.js";
+import { selectV9CuratedOpeningMove, v9CuratedOpeningLines } from "./opening-policy-v9.js";
 
 const info = await initialiseV9OpeningBook();
-assert.equal(info.positions, 0, "the initial placeholder book should report zero trained positions");
+assert.equal(info.positions, 0, "the placeholder GM book starts empty");
 
-const game = new Chess();
-const first = selectV9OpeningMove(game);
-assert.ok(first, "V9 should choose a curated first move before GM data is trained");
-assert.equal(first.san, "e4", "V9 should prefer a classical central opening, not the Van Geet Opening");
-assert.ok(game.moves().includes(first.san), "the selected opening move must be legal");
+// Prove every fallback line is legal from the standard starting position.
+for (const line of v9CuratedOpeningLines()) {
+  const game = new Chess();
+  for (const san of line.moves) {
+    const move = game.move(san);
+    assert.ok(move, line.name + " contains an illegal move: " + san);
+  }
+}
 
-game.move(first);
-const blackReply = selectV9OpeningMove(game);
-assert.ok(blackReply, "the curated fallback should provide a legal reply");
-assert.ok(game.moves().includes(blackReply.san), "the reply must be legal");
+// White defaults to 1.e4 while retaining a Queen's Gambit alternative.
+const start = new Chess();
+assert.equal(selectV9CuratedOpeningMove(start, () => 0).san, "e4");
+assert.equal(selectV9CuratedOpeningMove(start, () => 0.99).san, "d4");
 
+// Against 1.e4, Black's book offers the Caro-Kann and Sicilian, not 1...e5.
+const afterE4 = new Chess();
+afterE4.move("e4");
+assert.equal(selectV9CuratedOpeningMove(afterE4, () => 0).san, "c6");
+assert.equal(selectV9CuratedOpeningMove(afterE4, () => 0.99).san, "c5");
+
+// Italian and Ruy Lopez are both available after 1.e4 e5 2.Nf3 Nc6.
+const italianPosition = new Chess();
+for (const san of ["e4", "e5", "Nf3", "Nc6"]) italianPosition.move(san);
+assert.equal(selectV9CuratedOpeningMove(italianPosition, () => 0).san, "Bc4");
+assert.equal(selectV9CuratedOpeningMove(italianPosition, () => 0.99).san, "Bb5");
+
+// The Queen's Gambit Declined is the prepared answer to 1.d4.
+const afterD4 = new Chess();
+afterD4.move("d4");
+assert.equal(selectV9CuratedOpeningMove(afterD4, () => 0).san, "d5");
+
+// Do not recommend continuing the Van Geet.
 const vanGeet = new Chess();
 vanGeet.move("Nc3");
-assert.equal(selectV9OpeningMove(vanGeet), null,
-  "the curated repertoire should not continue the Van Geet Opening as a recommended line");
+assert.equal(selectV9CuratedOpeningMove(vanGeet, () => 0), null);
+assert.equal(selectV9OpeningMove(vanGeet), null);
 
-console.log("MARLIN V9 GM opening-book fallback tests passed.");
+console.log("MARLIN V9 classical opening repertoire tests passed.");
