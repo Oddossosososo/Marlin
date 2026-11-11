@@ -1,0 +1,36 @@
+name: MARLIN V8 development checks
+
+on:
+  push:
+    branches: [v8-development]
+    paths:
+      - "training/championship.py"
+      - "training/test_championship.py"
+      - "training/championship-state.json"
+      - "marlin-v8-config.json"
+      - "V8_ROADMAP.md"
+      - ".github/workflows/check-marlin-v8.yml"
+  pull_request:
+    branches: [main, v8-development]
+    paths:
+      - "training/championship.py"
+      - "training/test_championship.py"
+      - "training/championship-state.json"
+      - "marlin-v8-config.json"
+      - "V8_ROADMAP.md"
+      - ".github/workflows/check-marlin-v8.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  championship-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Test champion and veto state machine
+        working-directory: training
+        run: python -m unittest -v test_championship.py
