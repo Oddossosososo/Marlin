@@ -41,8 +41,8 @@ function format(value) {
 }
 
 const requestedDepth = Number.parseInt(process.argv[2] || "4", 10);
-if (!Number.isInteger(requestedDepth) || requestedDepth < 1 || requestedDepth > 6) {
-  console.error("Usage: npm run perft:v8 -- [depth 1-6]");
+if (!Number.isInteger(requestedDepth) || requestedDepth < 1 || requestedDepth > 4) {
+  console.error("Usage: npm run perft:v8 -- [depth 1-4]");
   process.exit(2);
 }
 
