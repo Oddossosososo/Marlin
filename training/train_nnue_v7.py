@@ -83,6 +83,7 @@ def main():
     parser.add_argument("--seed", type=int, default=47)
     parser.add_argument("--model-name", default="MARLIN V7")
     parser.add_argument("--data-attribution", default="Operator-supplied PGN and Stockfish teacher labels; verify source licence.")
+    parser.add_argument("--data-license", default="Source dataset licence(s) recorded in data attribution.")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -156,6 +157,7 @@ def main():
             "validation_positions": int(len(valid_ids)),
             "seed": args.seed,
             "data_attribution": args.data_attribution,
+            "data_license": args.data_license,
             "data_sha256": {
                 str(path): hashlib.sha256(Path(path).read_bytes()).hexdigest()
                 for path in args.data
