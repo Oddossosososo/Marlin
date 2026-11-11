@@ -162,10 +162,45 @@ uint64_t hash(const Board& b){
 struct Entry{uint64_t key=0;int depth=-1,score=0,flag=0;Move move{};};
 std::array<Entry,1<<18> tt;
 uint64_t nodes=0;
-int scoreTT(int s,int ply){if(s>MATE-MAX_PLY)return s-ply;if(s< -MATE+MAX_PLY)return s+ply;return s;}
-void order(const Board& b,std::vector<Move>& moves,const Move& ttMove){
+int scoreFromTT(int s,int ply){if(s>MATE-MAX_PLY)return s-ply;if(s< -MATE+MAX_PLY)return s+ply;return s;}
+int scoreToTT(int s,int ply){if(s>MATE-MAX_PLY)return s+ply;if(s< -MATE+MAX_PLY)return s-ply;return s;}
+
+constexpr int MAX_HISTORY=16384;
+std::array<std::array<std::array<int,128>,128>,2> history{};
+std::array<std::array<Move,2>,MAX_PLY> killers{};
+
+bool sameMove(const Move& a,const Move& b){
+    return a.from==b.from&&a.to==b.to&&a.promo==b.promo;
+}
+bool quietMove(const Board& b,const Move& m){
+    return b.sq[m.to]==EMPTY&&!(m.flags&2)&&m.promo==0;
+}
+int historyScore(const Board& b,const Move& m){
+    return history[b.side>0?0:1][m.from][m.to];
+}
+void rewardHistory(const Board& b,const Move& m,int depth){
+    int& h=history[b.side>0?0:1][m.from][m.to];
+    const int bonus=std::min(2048,depth*depth*24);
+    h+=bonus-h*std::abs(bonus)/MAX_HISTORY;
+    h=std::max(-MAX_HISTORY,std::min(MAX_HISTORY,h));
+}
+void penalizeHistory(const Board& b,const Move& m,int depth){
+    int& h=history[b.side>0?0:1][m.from][m.to];
+    const int malus=std::min(1024,depth*depth*12);
+    h-=malus+h*malus/MAX_HISTORY;
+    h=std::max(-MAX_HISTORY,std::min(MAX_HISTORY,h));
+}
+void order(const Board& b,std::vector<Move>& moves,const Move& ttMove,int ply){
     std::stable_sort(moves.begin(),moves.end(),[&](const Move&a,const Move&bmove){
-        auto value=[&](const Move&m){if(m.from==ttMove.from&&m.to==ttMove.to&&m.promo==ttMove.promo)return 1000000;int victim=(m.flags&2)?PAWN:absPiece(b.sq[m.to]);int attacker=absPiece(b.sq[m.from]);return (m.promo?800000+VALUE[m.promo]:0)+(victim?100000+VALUE[victim]*10-VALUE[attacker]:0);};
+        auto value=[&](const Move&m){
+            if(ttMove.from>=0&&sameMove(m,ttMove))return 2000000;
+            if(m.promo)return 1500000+VALUE[m.promo];
+            const int victim=(m.flags&2)?PAWN:absPiece(b.sq[m.to]);
+            if(victim)return 1000000+VALUE[victim]*16-VALUE[absPiece(b.sq[m.from])];
+            if(ply<MAX_PLY&&sameMove(m,killers[ply][0]))return 900000;
+            if(ply<MAX_PLY&&sameMove(m,killers[ply][1]))return 899000;
+            return historyScore(b,m);
+        };
         return value(a)>value(bmove);
     });
 }
@@ -189,7 +224,7 @@ int qsearch(Board& b,int alpha,int beta,int ply){
 int negamax(Board& b,int depth,int alpha,int beta,int ply,bool allowNull=true){
     ++nodes;if(ply>=MAX_PLY)return evaluate(b);if(depth<=0)return qsearch(b,alpha,beta,ply);
     uint64_t key=hash(b);Entry& e=tt[key&(tt.size()-1)];Move ttMove=e.key==key?e.move:Move{};
-    int original=alpha;if(e.key==key&&e.depth>=depth){int s=scoreTT(e.score,ply);if(e.flag==0)return s;if(e.flag==1&&s>=beta)return s;if(e.flag==2&&s<=alpha)return s;}
+    int original=alpha;if(e.key==key&&e.depth>=depth){int s=scoreFromTT(e.score,ply);if(e.flag==0)return s;if(e.flag==1&&s>=beta)return s;if(e.flag==2&&s<=alpha)return s;}
     std::vector<Move> moves;legalMoves(b,moves,false);
     bool check=inCheck(b,b.side);
     if(moves.empty())return check?-MATE+ply:0;
@@ -205,9 +240,9 @@ int negamax(Board& b,int depth,int alpha,int beta,int ply,bool allowNull=true){
         b.side=oldSide;b.ep=oldEp;b.halfmove=oldHalfmove;b.fullmove=oldFullmove;
         if(nullScore>=beta)return beta;
     }
-    order(b,moves,ttMove);int best=-INF;Move bestMove=moves[0];int index=0;
+    order(b,moves,ttMove,ply);int best=-INF;Move bestMove=moves[0];int index=0;std::array<Move,64> quietTried{};int quietCount=0;
     for(const Move&m:moves){
-        bool quiet=!b.sq[m.to]&&!(m.flags&2)&&!m.promo;
+        bool quiet=quietMove(b,m);if(quiet&&quietCount<int(quietTried.size()))quietTried[quietCount++]=m;
         Undo u=makeMove(b,m);int score;
         if(index==0)score=-negamax(b,depth-1,-beta,-alpha,ply+1);
         else {
@@ -217,9 +252,19 @@ int negamax(Board& b,int depth,int alpha,int beta,int ply,bool allowNull=true){
             if(score>alpha&&score<beta)score=-negamax(b,depth-1,-beta,-alpha,ply+1);
         }
         undoMove(b,m,u);++index;
-        if(score>best){best=score;bestMove=m;}if(score>alpha)alpha=score;if(alpha>=beta)break;
+        if(score>best){best=score;bestMove=m;}if(score>alpha)alpha=score;
+        if(alpha>=beta){
+            if(quiet){
+                if(ply<MAX_PLY&&!sameMove(m,killers[ply][0])){
+                    killers[ply][1]=killers[ply][0];killers[ply][0]=m;
+                }
+                rewardHistory(b,m,depth);
+                for(int q=0;q<quietCount;q++)if(!sameMove(quietTried[q],m))penalizeHistory(b,quietTried[q],depth);
+            }
+            break;
+        }
     }
-    e.key=key;e.depth=depth;e.score=scoreTT(best,ply);e.flag=best<=original?2:best>=beta?1:0;e.move=bestMove;return best;
+    e.key=key;e.depth=depth;e.score=scoreToTT(best,ply);e.flag=best<=original?2:best>=beta?1:0;e.move=bestMove;return best;
 }
 uint64_t perft(Board& b,int depth){
     if(depth==0)return 1;std::vector<Move> moves;legalMoves(b,moves,false);uint64_t total=0;
@@ -237,7 +282,7 @@ extern "C" int marlin_cpp_search(const char* fen,int maxDepth,char* output,int o
     nodes=0;Move best=moves[0];int bestScore=0;int depthLimit=std::max(1,std::min(12,maxDepth));
     for(int depth=1;depth<=depthLimit;depth++){
         int alpha=-INF,beta=INF,iterationScore=-INF;Move iterationBest=best;
-        order(b,moves,best);
+        order(b,moves,best,0);
         for(const Move&m:moves){Undo u=makeMove(b,m);int score=-negamax(b,depth-1,-beta,-alpha,1);undoMove(b,m,u);if(score>iterationScore){iterationScore=score;iterationBest=m;}if(score>alpha)alpha=score;}
         best=iterationBest;bestScore=iterationScore;
     }
