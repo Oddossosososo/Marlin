@@ -4,33 +4,37 @@ on:
   push:
     branches: [v8-development]
     paths:
-      - "training/championship.py"
-      - "training/test_championship.py"
-      - "training/championship-state.json"
-      - "marlin-v8-config.json"
-      - "V8_ROADMAP.md"
+      - "engine-v8.js"
+      - "evaluation-v8.js"
+      - "arena-worker.js"
+      - "app.js"
+      - "index.html"
       - ".github/workflows/check-marlin-v8.yml"
   pull_request:
     branches: [main, v8-development]
     paths:
-      - "training/championship.py"
-      - "training/test_championship.py"
-      - "training/championship-state.json"
-      - "marlin-v8-config.json"
-      - "V8_ROADMAP.md"
+      - "engine-v8.js"
+      - "evaluation-v8.js"
+      - "arena-worker.js"
+      - "app.js"
+      - "index.html"
       - ".github/workflows/check-marlin-v8.yml"
 
 permissions:
   contents: read
 
 jobs:
-  championship-tests:
+  v8-syntax:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-node@v5
         with:
-          python-version: "3.11"
-      - name: Test champion and veto state machine
-        working-directory: training
-        run: python -m unittest -v test_championship.py
+          node-version: "22"
+      - name: Check V8 JavaScript syntax
+        run: |
+          set -euo pipefail
+          for file in engine-v8.js evaluation-v8.js arena-worker.js app.js; do
+            echo "Checking $file"
+            node --input-type=module --check < "$file"
+          done
