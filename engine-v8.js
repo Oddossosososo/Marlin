@@ -108,13 +108,16 @@ function countSearchNode() {
   }
 }
 
-function zobristHashFen(fenString) {
-  const fen = fenString.split(" ");
+function positionInfoFromFenFields(fen) {
   const placement = fen[0];
+  const side = fen[1];
   let low = 0;
   let high = 0;
   let square = 0;
+  let sideMaterial = 0;
 
+  // One board scan supplies both the Zobrist key and null-move material
+  // test. This avoids rescanning the FEN at every search node.
   for (let i = 0; i < placement.length && square < 64; i++) {
     const token = placement[i];
     if (token === "/") continue;
@@ -128,45 +131,40 @@ function zobristHashFen(fenString) {
     const key = Z_PIECES[square][sideOffset + pieceType];
     low ^= key[0];
     high ^= key[1];
+
+    const value = VALUE[token.toLowerCase()];
+    const belongsToSide = side === "w"
+      ? token === token.toUpperCase()
+      : token === token.toLowerCase();
+    if (belongsToSide && pieceType !== PIECE_INDEX.p && pieceType !== PIECE_INDEX.k) {
+      sideMaterial += value;
+    }
     square++;
   }
 
-  if (fen[1] === "b") { low ^= Z_SIDE[0]; high ^= Z_SIDE[1]; }
+  if (side === "b") { low ^= Z_SIDE[0]; high ^= Z_SIDE[1]; }
   const castling = fen[2] || "-";
   if (castling.includes("K")) { low ^= Z_CASTLING[0][0]; high ^= Z_CASTLING[0][1]; }
   if (castling.includes("Q")) { low ^= Z_CASTLING[1][0]; high ^= Z_CASTLING[1][1]; }
   if (castling.includes("k")) { low ^= Z_CASTLING[2][0]; high ^= Z_CASTLING[2][1]; }
   if (castling.includes("q")) { low ^= Z_CASTLING[3][0]; high ^= Z_CASTLING[3][1]; }
-  if (fen[3] && fen[3] !== "-") {
-    const file = fen[3].charCodeAt(0) - 97;
+  const ep = fen[3] || "-";
+  if (ep !== "-") {
+    const file = ep.charCodeAt(0) - 97;
     if (file >= 0 && file < 8) { low ^= Z_EP_FILE[file][0]; high ^= Z_EP_FILE[file][1]; }
   }
   const halfmove = Math.min(100, Math.max(0, Number(fen[4]) || 0));
   low ^= Z_HALFMOVE[halfmove][0];
   high ^= Z_HALFMOVE[halfmove][1];
-  return (high & 0x1fffff) * 4294967296 + (low >>> 0);
+
+  return {
+    key: (high & 0x1fffff) * 4294967296 + (low >>> 0),
+    hasNullMoveMaterial: sideMaterial >= VALUE.r
+  };
 }
 
 function zobristHash(game) {
-  return zobristHashFen(game.fen());
-}
-
-function sideHasNullMoveMaterialFen(fen) {
-  const sideIndex = fen.indexOf(" ");
-  const side = fen[sideIndex + 1];
-  let material = 0;
-  for (let i = 0; i < sideIndex; i++) {
-    const token = fen[i];
-    if (token === "/" || (token >= "1" && token <= "8")) continue;
-    const type = token.toLowerCase();
-    if (type === "p" || type === "k" || VALUE[type] === undefined) continue;
-    const isWhite = token === token.toUpperCase();
-    if ((side === "w" && isWhite) || (side === "b" && !isWhite)) {
-      material += VALUE[type];
-      if (material >= VALUE.r) return true;
-    }
-  }
-  return false;
+  return positionInfoFromFenFields(game.fen().split(" ")).key;
 }
 
 function storeTT(key, entry) {
@@ -401,11 +399,11 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
   if (depth <= 0) return quiescence(game, alpha, beta, ply);
 
   const originalAlpha = alpha;
-  const fen = game.fen();
-  const fenFields = fen.split(" ");
+  const fenFields = game.fen().split(" ");
   const halfmoveClock = Number(fenFields[4]) || 0;
   const repetitionDraw = isRepeatedPosition(game, halfmoveClock);
-  const key = zobristHashFen(fen);
+  const positionInfo = positionInfoFromFenFields(fenFields);
+  const key = positionInfo.key;
   const ttSlot = ttIndex(key);
   const ttHit = TT_VALID[ttSlot] && TT_KEYS[ttSlot] === key;
   const ttMove = ttHit ? ttMoveAt(ttSlot) : null;
@@ -434,7 +432,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
   // shallow, non-check nodes with sufficient non-pawn material to reduce
   // zugzwang risk. The margin grows with depth.
   if (!inCheck && depth <= 3 && beta < MATE - MAX_PLY &&
-      sideHasNullMoveMaterialFen(fen) &&
+      positionInfo.hasNullMoveMaterial &&
       staticEval - (95 * depth) >= beta) {
     return staticEval - (95 * depth);
   }
@@ -445,7 +443,7 @@ function negamax(game, depth, alpha, beta, ply, allowNull = true, previousMove =
   // the real position is very likely good enough to cause a beta cutoff.
   // Disable consecutive nulls and avoid likely zugzwang positions.
   if (allowNull && depth >= 3 && !inCheck && beta < MATE - MAX_PLY &&
-      sideHasNullMoveMaterialFen(fen)) {
+      positionInfo.hasNullMoveMaterial) {
     const reduction = 2 + Math.floor(depth / 4);
     const nullPosition = makeNullPosition(game);
     const nullScore = -negamax(
