@@ -32,7 +32,7 @@ function updatePlayerIdentity() {
   const whitePlayer = document.querySelector("#white-player");
   const inArena = !arenaPanel.hidden;
   const v7IsBlack = lastArenaV7Color === "b";
-  const blackName = inArena ? (v7IsBlack ? "MARLIN V7" : "MARLIN V8") : "MARLIN C++";
+  const blackName = inArena ? (v7IsBlack ? "MARLIN V7" : "MARLIN V8") : (engineStatus.includes("MARLIN V7") ? "MARLIN V7" : "MARLIN C++");
   const whiteName = inArena ? (v7IsBlack ? "MARLIN V8" : "MARLIN V7") : "YOU";
   const whiteIsHuman = !inArena;
 
@@ -160,7 +160,7 @@ function getEngineMove(depth) {
           const depth = Number(event.data.depth || 0);
           const nodes = Number(event.data.nodes || 0).toLocaleString();
           const nps = Number(event.data.nps || 0).toLocaleString();
-          thinkingEl.textContent = "MARLIN C++ · DEPTH " + depth + " · " + nodes + " NODES · " + nps + " NPS";
+          thinkingEl.textContent = (event.data.engine === "v7" ? "MARLIN V7" : "MARLIN C++") + " · DEPTH " + depth + " · " + nodes + " NODES · " + nps + " NPS";
           return;
         }
         const pending = pendingEngineRequest;
