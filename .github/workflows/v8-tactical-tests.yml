@@ -1,0 +1,39 @@
+name: MARLIN V8 Tactical Tests
+
+on:
+  push:
+    branches:
+      - v8-development
+    paths:
+      - 'engine-v8.js'
+      - 'evaluation-v8.js'
+      - 'nnue-v7.js'
+      - 'test-engine-v8.js'
+      - 'package.json'
+      - '.github/workflows/v8-tactical-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tactical-tests:
+    name: Run V8 tactical smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout v8-development
+        uses: actions/checkout@v5
+        with:
+          ref: v8-development
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tactical tests
+        run: npm run test:v8
