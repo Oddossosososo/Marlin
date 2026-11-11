@@ -1,0 +1,44 @@
+name: MARLIN V8 development checks
+
+on:
+  push:
+    branches: [v8-development]
+    paths:
+      - "engine-v8.js"
+      - "evaluation-v8.js"
+      - "arena-worker.js"
+      - "app.js"
+      - "index.html"
+      - ".github/workflows/check-marlin-v8.yml"
+  pull_request:
+    branches: [main, v8-development]
+    paths:
+      - "engine-v8.js"
+      - "evaluation-v8.js"
+      - "arena-worker.js"
+      - "app.js"
+      - "index.html"
+      - ".github/workflows/check-marlin-v8.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  v8-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Install chess rules library for engine smoke tests
+        run: npm install --no-save chess.js
+      - name: Check V8 JavaScript syntax
+        run: |
+          set -euo pipefail
+          for file in engine-v8.js evaluation-v8.js arena-worker.js app.js training/smoke-v8.mjs; do
+            echo "Checking $file"
+            node --input-type=module --check < "$file"
+          done
+      - name: Verify V8 and V7 return legal moves
+        run: node training/smoke-v8.mjs

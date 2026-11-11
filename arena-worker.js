@@ -1,6 +1,6 @@
 import { Chess } from "https://esm.sh/chess.js@1.4.0";
-import { findBestMove as findV7Move, initialiseV7 } from "./engine-v7-policy.js";
-import { findBestMove as findV6Move, initialiseV6 } from "./engine-v6-policy.js";
+import { findBestMove as findV8Move, initialiseV8 } from "./engine-v8.js";
+import { findBestMove as findV7Move, initialiseV7 } from "./engine-v7.js";
 
 self.onmessage = async (event) => {
   const { pgn, depth, version, requestId } = event.data || {};
@@ -8,8 +8,8 @@ self.onmessage = async (event) => {
     const game = new Chess();
     if (pgn) game.loadPgn(pgn);
 
-    const isV7 = version === "v7";
-    const findMove = isV7 ? findV7Move : findV6Move;
+    const isV8 = version === "v8";
+    const findMove = isV8 ? findV8Move : findV7Move;
     const reportProgress = details => self.postMessage({
       requestId,
       type: "progress",
@@ -18,7 +18,7 @@ self.onmessage = async (event) => {
     });
 
     reportProgress({ stage: "initialising", depth: 0, nodes: 0 });
-    const initialised = isV7 ? await initialiseV7() : await initialiseV6();
+    const initialised = isV8 ? await initialiseV8() : await initialiseV7();
     reportProgress({ stage: "checking-book", depth: 0, nodes: 0 });
     const move = await findMove(game, depth, {
       onProgress: details => reportProgress(details)
