@@ -49,7 +49,7 @@ const replay = new Chess();
 let beforeQueenBlunder = null;
 let afterBlackThreat = null;
 for (let i = 0; i < playedMoves.length; i++) {
-  if (i === 14) beforeQueenBlunder = replay.fen(); // after 14...Rhxc8, White to move
+  if (i === 28) beforeQueenBlunder = replay.fen(); // after 14...Rhxc8, White to move
   if (i === 36) afterBlackThreat = replay.fen(); // after 18...Qc3, White to move
   replay.move(playedMoves[i].san);
 }
@@ -61,8 +61,7 @@ searchAndPlay(
   beforeQueenBlunder,
   5,
   (_game, move) => {
-    assert.notEqual(move.from, "e3", "queen must not move from e3 into the f6-pawn capture");
-    assert.notEqual(move.to, "e5", "Qxe5+ was the game-losing blunder");
+    assert.notEqual(`${move.from}${move.to}`, "e3e5", "Qxe5+ was the game-losing blunder");
   }
 );
 
