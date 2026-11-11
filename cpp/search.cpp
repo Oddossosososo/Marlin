@@ -26,7 +26,7 @@ struct Undo {
 struct Board {
     std::array<int,128> sq{};
     int side=1,castle=15,ep=-1,halfmove=0,fullmove=1;
-    int whiteKing=4,blackKing=116;
+    int whiteKing=-1,blackKing=-1;
 };
 bool valid(int s){return s>=0 && !(s&0x88);}
 int fileOf(int s){return s&7;}
@@ -85,17 +85,17 @@ void pseudoMoves(const Board& b,std::vector<Move>& out,bool capturesOnly=false){
     for(int from=0;from<128;from++){if(!valid(from)){from+=7;continue;}int p=b.sq[from];if(!p||sign(p)!=b.side)continue;int type=absPiece(p);
         if(type==PAWN){
             int dir=b.side>0?16:-16,one=from+dir,last=b.side>0?7:0;
-            if(!capturesOnly&&valid(one)&&!b.sq[one]){
+            if((!capturesOnly||(valid(one)&&rankOf(one)==last))&&valid(one)&&!b.sq[one]){
                 if(rankOf(one)==last){for(int pr:{QUEEN,ROOK,BISHOP,KNIGHT})addMove(out,from,one,pr);}
                 else {addMove(out,from,one);int two=one+dir;if(rankOf(from)==(b.side>0?1:6)&&!b.sq[two])addMove(out,from,two,0,1);}
             }
             for(int df:{-1,1}){int to=one+df;if(!valid(to))continue;
-                if(b.sq[to]&&sign(b.sq[to])==-b.side){if(rankOf(to)==last){for(int pr:{QUEEN,ROOK,BISHOP,KNIGHT})addMove(out,from,to,pr);}else addMove(out,from,to);}
+                if(b.sq[to]&&sign(b.sq[to])==-b.side&&absPiece(b.sq[to])!=KING){if(rankOf(to)==last){for(int pr:{QUEEN,ROOK,BISHOP,KNIGHT})addMove(out,from,to,pr);}else addMove(out,from,to);}
                 else if(to==b.ep)addMove(out,from,to,0,2);
             }
         }else if(type==KNIGHT||type==KING){
             const int* offsets=type==KNIGHT?KNIGHT_OFF:KING_OFF;int n=8;
-            for(int i=0;i<n;i++){int to=from+offsets[i];if(!valid(to))continue;int target=b.sq[to];if(sign(target)==b.side)continue;if(!capturesOnly||target)addMove(out,from,to);}
+            for(int i=0;i<n;i++){int to=from+offsets[i];if(!valid(to))continue;int target=b.sq[to];if(sign(target)==b.side||absPiece(target)==KING)continue;if(!capturesOnly||target)addMove(out,from,to);}
             if(type==KING&&!capturesOnly&&!inCheck(b,b.side)){
                 if(b.side>0&&from==4){
                     if((b.castle&CASTLE_WK)&&b.sq[5]==0&&b.sq[6]==0&&b.sq[7]==ROOK&&!attacked(b,5,-1)&&!attacked(b,6,-1))addMove(out,4,6,0,4);
@@ -107,7 +107,7 @@ void pseudoMoves(const Board& b,std::vector<Move>& out,bool capturesOnly=false){
             }
         }else{
             const int* dirs=type==BISHOP?BISHOP_OFF:type==ROOK?ROOK_OFF:QUEEN_OFF;int n=type==QUEEN?8:4;
-            for(int i=0;i<n;i++){int to=from+dirs[i];while(valid(to)){int target=b.sq[to];if(sign(target)==b.side)break;if(!capturesOnly||target)addMove(out,from,to);if(target)break;to+=dirs[i];}}
+            for(int i=0;i<n;i++){int to=from+dirs[i];while(valid(to)){int target=b.sq[to];if(sign(target)==b.side||absPiece(target)==KING)break;if(!capturesOnly||target)addMove(out,from,to);if(target)break;to+=dirs[i];}}
         }
     }
 }
