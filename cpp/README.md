@@ -6,13 +6,17 @@ The native C++ engine is being developed alongside the JavaScript V8 engine. V8 
 - 64-bit bitboard attack primitives.
 - FEN parsing and serialization.
 - Legal move generation, including castling, en passant and promotions.
-- Make/unmake with reversible state.
-- Perft validation against standard start-position and Kiwipete counts.
+- Reversible make/unmake with castling, en-passant and move counters restored.
+- Perft tests for the start position and Kiwipete.
+- Iterative-deepening alpha-beta search, quiescence, move ordering and a Zobrist transposition table.
+- A standalone UCI command-line interface.
 
-## Build and test
+## Build
 ```sh
-g++ -std=c++20 -O3 -DNDEBUG -Wall -Wextra -Werror -pedantic -Icpp/include cpp/src/bitboard.cpp cpp/src/board.cpp cpp/tests/bitboard_tests.cpp cpp/tests/board_tests.cpp -o /tmp/marlin-tests
-/tmp/marlin-tests
+cmake -S cpp -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+./build/marlin-tests
+./build/marlin-uci
 ```
 
-GitHub Actions runs the C++ correctness suite. This is a move-generation foundation, not yet the complete search engine or a replacement for the Lichess bot.
+The Lichess runner still uses the JavaScript engine. The C++ engine must pass CI, deeper perft suites, protocol tests and measured head-to-head games before it replaces the production bot. Search features are an initial implementation; strength and speed gains are not assumed until benchmarked.
