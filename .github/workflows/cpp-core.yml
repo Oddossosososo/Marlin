@@ -1,4 +1,4 @@
-name: MARLIN C++ Core Checks
+name: MARLIN C++ Engine Checks
 
 on:
   push:
@@ -14,21 +14,31 @@ permissions:
 
 jobs:
   cpp-tests:
-    name: Build and test C++ engine foundation
+    name: Compile, perft and search tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout v8-development
         uses: actions/checkout@v5
         with:
           ref: v8-development
 
-      - name: Compile with strict warnings
+      - name: Compile C++ engine and tests
         run: |
           g++ -std=c++20 -O3 -DNDEBUG -Wall -Wextra -Werror -pedantic \
-            -Icpp/include cpp/src/bitboard.cpp cpp/src/board.cpp \
-            cpp/tests/bitboard_tests.cpp cpp/tests/board_tests.cpp \
+            -Icpp/include cpp/src/bitboard.cpp cpp/src/board.cpp cpp/src/search.cpp \
+            cpp/tests/bitboard_tests.cpp cpp/tests/board_tests.cpp cpp/tests/search_tests.cpp \
             -o /tmp/marlin-cpp-tests
+          g++ -std=c++20 -O3 -DNDEBUG -Wall -Wextra -Werror -pedantic \
+            -Icpp/include cpp/src/bitboard.cpp cpp/src/board.cpp cpp/src/search.cpp \
+            cpp/src/uci.cpp -o /tmp/marlin-uci
 
-      - name: Run bitboard and legal-move tests
+      - name: Run correctness and search tests
         run: /tmp/marlin-cpp-tests
+
+      - name: Smoke-test UCI protocol
+        run: |
+          printf 'uci\nisready\nposition startpos\ngo depth 3\nquit\n' | /tmp/marlin-uci | tee /tmp/uci-output.txt
+          grep -q '^uciok$' /tmp/uci-output.txt
+          grep -q '^readyok$' /tmp/uci-output.txt
+          grep -q '^bestmove ' /tmp/uci-output.txt
