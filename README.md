@@ -2,9 +2,9 @@
 
 MARLIN is an experimental browser chess engine and training project.
 
-## Current engine: V7
+## Play engine: V9 C++ WebAssembly
 
-- V7 is the default engine for Play and PGN next-move analysis.
+- V9 C++ WebAssembly is the default engine for Play and PGN next-move analysis. The Play interface falls back to the V7 policy/search if WebAssembly cannot load. V9's C++ search currently supports up to 12 plies.
 - Iterative deepening, alpha-beta / negamax, transposition table, PVS, LMR and null-move pruning. Search stops at the selected depth; there is no fixed node-count cutoff. Depth 6 is the default in Play, Arena and PGN analysis. Arena reads the selected depth control and sends that same depth to both V7 and V6. Actual nodes, elapsed time and nodes per second (NPS) are reported. V7 uses numeric 53-bit Zobrist keys instead of BigInt, scores each move once before sorting, keeps a bounded transposition table and move-ordering history warm across turns, and reuses the previous root move as a principal-variation hint. V6's Arena search also reuses previous-move context instead of rebuilding the full game history at every node.
 - A dedicated handcrafted evaluation adds king safety, pawn structure, piece activity and mobility, bishop-pair value, rook files and endgame king activity. Structural weaknesses are evaluated as soft penalties; tactics can justify them.
 - Captures use standard chess material values. V7's handcrafted fallback explicitly scores the white-minus-black material balance, alongside positional terms. Static-exchange evaluation is used for capture ordering and quiescence pruning; it does not punish the capturing piece simply for taking.
