@@ -11,12 +11,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Install chess rules library
+        run: npm install --no-save chess.js
       - name: Check JavaScript module syntax
         run: |
           set -euo pipefail
           for file in \
             engine-v7.js \
+            engine-v8.js \
+            evaluation-v8.js \
             engine-v6.js \
             engine-v7-policy.js \
             engine-v6-policy.js \
@@ -24,8 +32,10 @@ jobs:
             nnue-v7.js \
             engine-worker.js \
             arena-worker.js \
+            training/smoke-v8.mjs \
             app.js
           do
             echo "Checking $file"
             node --input-type=module --check < "$file"
           done
+          node training/smoke-v8.mjs
