@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <cctype>
@@ -141,7 +142,18 @@ bool hasNullMoveMaterial(const Board& b){
     for(int s=0;s<128;s++){if(!valid(s)){s+=7;continue;}int p=b.sq[s];if(p&&sign(p)==b.side&&absPiece(p)!=PAWN&&absPiece(p)!=KING){material+=VALUE[absPiece(p)];if(material>=VALUE[ROOK])return true;}}
     return false;
 }
-int evaluate(const Board& b){
+// MARLIN V9's optional NNUE uses the same side-to-move-relative
+// piece-square feature encoding as the independent Python trainer.
+constexpr int NNUE_FEATURES=768, NNUE_HIDDEN1=128, NNUE_HIDDEN2=32;
+std::array<float,NNUE_FEATURES*NNUE_HIDDEN1> nnueFc1W{};
+std::array<float,NNUE_HIDDEN1> nnueFc1B{};
+std::array<float,NNUE_HIDDEN1*NNUE_HIDDEN2> nnueFc2W{};
+std::array<float,NNUE_HIDDEN2> nnueFc2B{};
+std::array<float,NNUE_HIDDEN2> nnueOutW{};
+float nnueOutB=0.0f;
+bool nnueReady=false;
+
+int evaluateHandcrafted(const Board& b){
     int score=0;
     for(int s=0;s<128;s++){if(!valid(s)){s+=7;continue;}int p=b.sq[s];if(!p)continue;int t=absPiece(p),r=rankOf(s),f=fileOf(s);
         int positional=0;int advance=p>0?r:7-r;int center=7-(std::abs(3-f)+std::abs(3-r));
@@ -153,6 +165,39 @@ int evaluate(const Board& b){
         score+=sign(p)*(VALUE[t]+positional);
     }
     return b.side*score;
+}
+
+int evaluateNnue(const Board& b){
+    std::array<float,NNUE_HIDDEN1> h1=nnueFc1B;
+    for(int s=0;s<128;s++){
+        if(!valid(s)){s+=7;continue;}
+        const int piece=b.sq[s];
+        if(!piece)continue;
+        const int type=absPiece(piece)-1;
+        const int relativeColour=sign(piece)==b.side?0:1;
+        const int square=rankOf(s)*8+fileOf(s);
+        const int feature=relativeColour*384+type*64+square;
+        const float* row=nnueFc1W.data()+feature*NNUE_HIDDEN1;
+        for(int j=0;j<NNUE_HIDDEN1;j++)h1[j]+=row[j];
+    }
+    for(float& value:h1)value=std::max(0.0f,value);
+
+    std::array<float,NNUE_HIDDEN2> h2=nnueFc2B;
+    for(int i=0;i<NNUE_HIDDEN1;i++){
+        const float value=h1[i];
+        if(value<=0.0f)continue;
+        const float* row=nnueFc2W.data()+i*NNUE_HIDDEN2;
+        for(int j=0;j<NNUE_HIDDEN2;j++)h2[j]+=value*row[j];
+    }
+
+    float output=nnueOutB;
+    for(int i=0;i<NNUE_HIDDEN2;i++)output+=std::max(0.0f,h2[i])*nnueOutW[i];
+    if(!std::isfinite(output))return evaluateHandcrafted(b);
+    return static_cast<int>(std::lround(std::max(-25.0f,std::min(25.0f,output))*800.0f));
+}
+
+int evaluate(const Board& b){
+    return nnueReady?evaluateNnue(b):evaluateHandcrafted(b);
 }
 uint64_t hash(const Board& b){
     uint64_t h=1469598103934665603ULL;
@@ -273,6 +318,34 @@ uint64_t perft(Board& b,int depth){
 std::string uci(const Move&m){if(m.from<0)return "0000";std::string s=squareName(m.from)+squareName(m.to);if(m.promo){const char names[]=" pnbrqk";s+=names[m.promo];}return s;}
 }
 
+extern "C" int marlin_cpp_set_nnue_weights(
+    const float* fc1W,const float* fc1B,const float* fc2W,
+    const float* fc2B,const float* outW,const float* outB){
+    if(!fc1W||!fc1B||!fc2W||!fc2B||!outW||!outB)return 0;
+    const auto finite=[](const float* values,size_t count){
+        for(size_t i=0;i<count;i++)if(!std::isfinite(values[i]))return false;
+        return true;
+    };
+    if(!finite(fc1W,NNUE_FEATURES*NNUE_HIDDEN1)||
+       !finite(fc1B,NNUE_HIDDEN1)||
+       !finite(fc2W,NNUE_HIDDEN1*NNUE_HIDDEN2)||
+       !finite(fc2B,NNUE_HIDDEN2)||
+       !finite(outW,NNUE_HIDDEN2)||!std::isfinite(*outB))return 0;
+    std::copy(fc1W,fc1W+nnueFc1W.size(),nnueFc1W.begin());
+    std::copy(fc1B,fc1B+nnueFc1B.size(),nnueFc1B.begin());
+    std::copy(fc2W,fc2W+nnueFc2W.size(),nnueFc2W.begin());
+    std::copy(fc2B,fc2B+nnueFc2B.size(),nnueFc2B.begin());
+    std::copy(outW,outW+nnueOutW.size(),nnueOutW.begin());
+    nnueOutB=*outB;
+    nnueReady=true;
+    return 1;
+}
+extern "C" int marlin_cpp_nnue_enabled(){return nnueReady?1:0;}
+extern "C" int marlin_cpp_evaluate_fen(const char* fen){
+    Board b;
+    if(!parseFen(fen,b))return 0;
+    return evaluate(b);
+}
 extern "C" uint64_t marlin_cpp_perft(const char* fen,int depth){
     Board b;if(!parseFen(fen,b)||depth<0||depth>8)return 0;return perft(b,depth);
 }
