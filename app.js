@@ -598,7 +598,7 @@ async function startArenaMatch() {
   document.querySelector("#arena-live").textContent = "LIVE";
   const v9Color = arenaMatchCount % 2 === 0 ? "b" : "w";
   lastArenaV9Color = v9Color;
-  document.querySelector("#arena-progress").textContent = "V9 vs V8 — " + (v9Color === "b" ? "V9 White" : "V8 White") + " — match running";
+  document.querySelector("#arena-progress").textContent = "V9 vs V8 — " + (v9Color === "w" ? "V9 White" : "V8 White") + " — match running";
   document.querySelector("#arena-ply").textContent = "0 plies";
   render();
   try {
