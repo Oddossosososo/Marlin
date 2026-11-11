@@ -18,7 +18,7 @@ let engineRequestId = 0;
 let pendingEngineRequest = null;
 let arenaRunning = false;
 let arenaStopRequested = false;
-const arenaStats = { v7: 0, draws: 0, v6: 0 };
+const arenaStats = { v8: 0, draws: 0, v7: 0 };
 const playNav = document.querySelector("#play-nav");
 const arenaNav = document.querySelector("#arena-nav");
 const arenaPanel = document.querySelector("#arena-panel");
@@ -31,9 +31,9 @@ function updatePlayerIdentity() {
   const blackPlayer = document.querySelector("#black-player");
   const whitePlayer = document.querySelector("#white-player");
   const inArena = !arenaPanel.hidden;
-  const v6IsBlack = lastArenaV6Color === "b";
-  const blackName = inArena ? (v6IsBlack ? "MARLIN V6" : "MARLIN V7") : "MARLIN V7";
-  const whiteName = inArena ? (v6IsBlack ? "MARLIN V7" : "MARLIN V6") : "YOU";
+  const v7IsBlack = lastArenaV7Color === "b";
+  const blackName = inArena ? (v7IsBlack ? "MARLIN V8" : "MARLIN V8") : "MARLIN V8";
+  const whiteName = inArena ? (v7IsBlack ? "MARLIN V8" : "MARLIN V8") : "YOU";
   const whiteIsHuman = !inArena;
 
   const setEngine = (element, name) => {
@@ -160,7 +160,7 @@ function getEngineMove(depth) {
           const depth = Number(event.data.depth || 0);
           const nodes = Number(event.data.nodes || 0).toLocaleString();
           const nps = Number(event.data.nps || 0).toLocaleString();
-          thinkingEl.textContent = "MARLIN V7 · DEPTH " + depth + " · " + nodes + " NODES · " + nps + " NPS";
+          thinkingEl.textContent = "MARLIN V8 · DEPTH " + depth + " · " + nodes + " NODES · " + nps + " NPS";
           return;
         }
         const pending = pendingEngineRequest;
@@ -206,11 +206,11 @@ async function makeEngineMove() {
     );
     if (!legalMove) throw new Error("MARLIN returned a move that is not legal in this position.");
 
-    if (candidate.source === "syzygy-7-man") engineStatus = "MARLIN V7 · SYZYGY 6/7-MAN";
-    else if (candidate.source === "master-book") engineStatus = "MARLIN V7 · MASTER OPENING BOOK";
-    else if (candidate.source === "curated-book" || candidate.source === "opening-book") engineStatus = "MARLIN V7 · CURATED OPENING BOOK";
-    else if (candidate.source === "search-fallback") engineStatus = "MARLIN V7 · SEARCH FALLBACK";
-    else engineStatus = (result.nnue ? "MARLIN V7 · NNUE ACTIVE" : "MARLIN V7 · HANDCRAFTED EVAL") +
+    if (candidate.source === "syzygy-7-man") engineStatus = "MARLIN V8 · SYZYGY 6/7-MAN";
+    else if (candidate.source === "master-book") engineStatus = "MARLIN V8 · MASTER OPENING BOOK";
+    else if (candidate.source === "curated-book" || candidate.source === "opening-book") engineStatus = "MARLIN V8 · CURATED OPENING BOOK";
+    else if (candidate.source === "search-fallback") engineStatus = "MARLIN V8 · SEARCH FALLBACK";
+    else engineStatus = (result.nnue ? "MARLIN V8 · NNUE ACTIVE" : "MARLIN V8 · HANDCRAFTED EVAL") +
       " · " + Number(result.nodes || 0).toLocaleString() + " NODES · " +
       Number(result.nps || 0).toLocaleString() + " NPS";
 
@@ -423,15 +423,15 @@ function getArenaPgn() {
     return "";
   }
   const raw = game.pgn({ maxWidth: 100 });
-  const v6IsWhite = lastArenaV6Color === "w";
-  const whiteName = v6IsWhite ? "Marlin V6" : "Marlin V7";
-  const blackName = v6IsWhite ? "Marlin V7" : "Marlin V6";
+  const v6IsWhite = lastArenaV7Color === "w";
+  const whiteName = v6IsWhite ? "Marlin V8" : "Marlin V8";
+  const blackName = v6IsWhite ? "Marlin V8" : "Marlin V8";
   const result = game.isCheckmate()
     ? (game.turn() === "w" ? "0-1" : "1-0")
     : (game.isDraw() || game.isStalemate() || game.history().length >= 240 ? "1/2-1/2" : "*");
   let body = raw.replace(/^\[[^\n]*\]\s*\n/gm, "").trim();
   const headers = [
-    '[Event "Marlin V7 vs V6 Arena"]',
+    '[Event "Marlin V8 vs V6 Arena"]',
     '[Site "https://oddossosososo.github.io/Marlin/"]',
     '[Annotator "Marlin Chess Engine"]',
     '[White "' + whiteName + '"]',
@@ -470,7 +470,7 @@ let arenaWorker = null;
 let arenaRequestId = 0;
 let arenaAutoStarted = false;
 let arenaMatchCount = 0;
-let lastArenaV6Color = "b";
+let lastArenaV7Color = "b";
 
 function setSection(section) {
   const showArena = section === "arena";
@@ -498,9 +498,9 @@ playNav.addEventListener("click", () => setSection("play"));
 arenaNav.addEventListener("click", () => setSection("arena"));
 
 function updateArenaStats() {
-  document.querySelector("#v7-wins").textContent = arenaStats.v7;
+  document.querySelector("#v8-wins").textContent = arenaStats.v8;
   document.querySelector("#arena-draws").textContent = arenaStats.draws;
-  document.querySelector("#v6-wins").textContent = arenaStats.v6;
+  document.querySelector("#v7-wins").textContent = arenaStats.v7;
 }
 function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
@@ -533,7 +533,7 @@ function getArenaMove(version, depth) {
       // Progress messages keep the Arena visibly active while depth-6 search
       // is working. Only a final move or error settles this Promise.
       if (event.data.type === "progress") {
-        const engineName = event.data.version === "v7" ? "MARLIN V7" : "MARLIN V6";
+        const engineName = event.data.version === "v7" ? "MARLIN V8" : "MARLIN V8";
         const nodes = Number(event.data.nodes || 0).toLocaleString();
         const nps = Number(event.data.nps || 0).toLocaleString();
         const stage = event.data.stage || "searching";
@@ -595,15 +595,15 @@ async function startArenaMatch() {
   const startButton = document.querySelector("#arena-start");
   startButton.disabled = true;
   document.querySelector("#arena-live").textContent = "LIVE";
-  const v6Color = arenaMatchCount % 2 === 0 ? "b" : "w";
-  lastArenaV6Color = v6Color;
+  const v7Color = arenaMatchCount % 2 === 0 ? "b" : "w";
+  lastArenaV7Color = v7Color;
   document.querySelector("#arena-progress").textContent = "V7 vs V6 — " + (v6Color === "b" ? "V7 White" : "V6 White") + " — match running";
   document.querySelector("#arena-ply").textContent = "0 plies";
   render();
   try {
     while (!game.isGameOver() && !arenaStopRequested && game.history().length < 240) {
-      const v6Turn = game.turn() === v6Color;
-      const result = await getArenaMove(v6Turn ? "v6" : "v7", depth);
+      const v7Turn = game.turn() === v7Color;
+      const result = await getArenaMove(v7Turn ? "v7" : "v8", depth);
       if (arenaStopRequested) break;
       const move = result?.move;
       if (!move) break;
@@ -625,13 +625,13 @@ async function startArenaMatch() {
       document.querySelector("#arena-ply").textContent = game.history().length + " plies";
       const last = game.history({ verbose: true }).slice(-1)[0];
       document.querySelector("#arena-progress").textContent =
-        (v6Turn ? "Marlin V6" : "Marlin V7") + " played " + (last?.san || move.from + "-" + move.to);
+        (v6Turn ? "Marlin V8" : "Marlin V8") + " played " + (last?.san || move.from + "-" + move.to);
       await wait(speed);
     }
     if (game.isCheckmate()) {
       const winnerColor = game.turn() === "w" ? "b" : "w";
-      const winner = winnerColor === v6Color ? "V6" : "V7";
-      if (winner === "V7") arenaStats.v7++; else arenaStats.v6++;
+      const winner = winnerColor === v7Color ? "V7" : "V8";
+      if (winner === "V8") arenaStats.v8++; else arenaStats.v7++;
       document.querySelector("#arena-live").textContent = winner + " WINS";
       document.querySelector("#arena-progress").textContent = "Checkmate — Marlin " + winner + " wins.";
     } else if (game.isDraw() || game.isStalemate() || game.isThreefoldRepetition() || game.history().length >= 240) {
