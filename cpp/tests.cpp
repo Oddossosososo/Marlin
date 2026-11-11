@@ -35,6 +35,18 @@ int main() {
     assert(marlin_cpp_perft(start, 2) == 400);
     assert(marlin_cpp_perft(start, 3) == 8902);
 
+    const char* kiwipete =
+        "r3k2r/p1ppqpb1/bn2pnp1/2pP4/1p2P3/2N2N2/PPQBBPPP/R3K2R w KQkq - 0 1";
+    assert(marlin_cpp_perft(kiwipete, 1) == 48);
+    assert(marlin_cpp_perft(kiwipete, 2) == 2039);
+    assert(marlin_cpp_perft(kiwipete, 3) == 97862);
+
+    const char* enPassant =
+        "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
+    assert(marlin_cpp_perft(enPassant, 1) == 14);
+    assert(marlin_cpp_perft(enPassant, 2) == 191);
+    assert(marlin_cpp_perft(enPassant, 3) == 2812);
+
     char result[256]{};
     (void)marlin_cpp_search(start, 2, result, sizeof(result));
     assert(std::strncmp(result, "bestmove ", 9) == 0);
