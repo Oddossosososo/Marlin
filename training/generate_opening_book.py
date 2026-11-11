@@ -105,14 +105,24 @@ def main():
         for uci, (games, points) in moves.items():
             if games < args.min_samples:
                 continue
+            score_rate = points / games
+            # Bayesian smoothing avoids treating a tiny winning sample as
+            # stronger evidence than a well-established mainline. The square
+            # root of the sample count rewards popularity without letting it
+            # completely overwhelm demonstrated results.
+            smoothed_score = (points + 10.0) / (games + 20.0)
+            weight = max(1, round(
+                100.0 * (games ** 0.5) * __import__("math").exp((smoothed_score - 0.5) * 2.0)
+            ))
             candidates.append({
                 "uci": uci,
                 "games": games,
-                "score": round(points / games, 5),
+                "score": round(score_rate, 5),
+                "smoothed_score": round(smoothed_score, 5),
+                "weight": weight,
             })
-        # Prefer the most established GM continuation; use results as a
-        # tie-breaker instead of trusting tiny samples.
-        candidates.sort(key=lambda item: (item["games"], item["score"]), reverse=True)
+        # Weighted move choice balances score performance and sample size.
+        candidates.sort(key=lambda item: (item["weight"], item["games"]), reverse=True)
         if candidates:
             positions[fen] = candidates[:6]
 
