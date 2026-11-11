@@ -1,6 +1,7 @@
 import { Chess } from "https://esm.sh/chess.js@1.4.0";
 import { findBestMove as findV8Move, initialiseV8 } from "./engine-v8.js";
 import createMarlinModule from "./marlin-wasm.js";
+import { initialiseV9OpeningBook, selectV9OpeningMove } from "./opening-book-v9.js";
 
 let wasmPromise = null;
 
@@ -78,7 +79,11 @@ self.onmessage = async (event) => {
     let move;
     let initialised = { nnue: false };
     if (version === "v9") {
-      move = await findV9Move(game.fen(), depth, reportProgress);
+      await initialiseV9OpeningBook();
+      move = selectV9OpeningMove(game) || await findV9Move(game.fen(), depth, reportProgress);
+      if (move.source === "gm-opening-book" || move.source === "curated-opening-book") {
+        reportProgress({ stage: "opening-book", depth: 0, nodes: 0 });
+      }
     } else if (version === "v8") {
       reportProgress({ stage: "initialising", depth: 0, nodes: 0 });
       initialised = await initialiseV8();
