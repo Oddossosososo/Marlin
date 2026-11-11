@@ -23,18 +23,22 @@ jobs:
         with:
           ref: v8-development
 
-      - name: Compile C++ engine and tests
+      - name: Compile C++ engine and separate test executables
         run: |
-          g++ -std=c++20 -O3 -DNDEBUG -Wall -Wextra -Werror -pedantic \
-            -Icpp/include cpp/src/bitboard.cpp cpp/src/board.cpp cpp/src/search.cpp \
-            cpp/tests/bitboard_tests.cpp cpp/tests/board_tests.cpp cpp/tests/search_tests.cpp \
-            -o /tmp/marlin-cpp-tests
-          g++ -std=c++20 -O3 -DNDEBUG -Wall -Wextra -Werror -pedantic \
-            -Icpp/include cpp/src/bitboard.cpp cpp/src/board.cpp cpp/src/search.cpp \
-            cpp/src/uci.cpp -o /tmp/marlin-uci
+          CORE="cpp/src/bitboard.cpp cpp/src/board.cpp cpp/src/search.cpp"
+          g++ -std=c++20 -O3 -DNDEBUG -Wall -Wextra -Werror -pedantic -Icpp/include $CORE cpp/tests/bitboard_tests.cpp -o /tmp/marlin-bitboard-tests
+          g++ -std=c++20 -O3 -DNDEBUG -Wall -Wextra -Werror -pedantic -Icpp/include $CORE cpp/tests/board_tests.cpp -o /tmp/marlin-board-tests
+          g++ -std=c++20 -O3 -DNDEBUG -Wall -Wextra -Werror -pedantic -Icpp/include $CORE cpp/tests/search_tests.cpp -o /tmp/marlin-search-tests
+          g++ -std=c++20 -O3 -DNDEBUG -Wall -Wextra -Werror -pedantic -Icpp/include $CORE cpp/src/uci.cpp -o /tmp/marlin-uci
 
-      - name: Run correctness and search tests
-        run: /tmp/marlin-cpp-tests
+      - name: Run bitboard tests
+        run: /tmp/marlin-bitboard-tests
+
+      - name: Run legal-move and perft tests
+        run: /tmp/marlin-board-tests
+
+      - name: Run alpha-beta search tests
+        run: /tmp/marlin-search-tests
 
       - name: Smoke-test UCI protocol
         run: |
