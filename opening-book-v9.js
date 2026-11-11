@@ -36,8 +36,8 @@ export async function initialiseV9OpeningBook() {
 }
 
 export function selectV9OpeningMove(game) {
-  // Never let a learned book recommend the Van Geet as White's first move.
-  // This is a hard repertoire rule, not a statistical preference.
+  // Keep learned opening-book data out of the untouched starting position.
+  // V9 search must select the first move, including 1.Nc3 if it evaluates it best.
   const isInitialWhitePosition =
     game.history().length === 0 &&
     game.turn() === "w" &&
