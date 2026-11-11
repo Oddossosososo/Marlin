@@ -357,7 +357,7 @@ function quiescence(game, alpha, beta, ply, remaining = 5, precomputedMoves = nu
     if (stand >= beta) return beta;
     if (stand > alpha) alpha = stand;
     if (remaining <= 0) return stand;
-    moves = moves.filter(m => m.captured || m.promotion);
+    moves = moves.filter(m => m.captured || m.promotion || /[+#]$/.test(m.san || ""));
     // Cheaply eliminate obviously losing non-checking captures with SEE.
     // Checks and promotions remain searchable; exact SEE mutates/undoes the
     // current position instead of cloning it.
