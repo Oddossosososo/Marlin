@@ -32,8 +32,8 @@ function updatePlayerIdentity() {
   const whitePlayer = document.querySelector("#white-player");
   const inArena = !arenaPanel.hidden;
   const v7IsBlack = lastArenaV7Color === "b";
-  const blackName = inArena ? (v7IsBlack ? "MARLIN V8" : "MARLIN V8") : "MARLIN V8";
-  const whiteName = inArena ? (v7IsBlack ? "MARLIN V8" : "MARLIN V8") : "YOU";
+  const blackName = inArena ? (v7IsBlack ? "MARLIN V7" : "MARLIN V8") : "MARLIN V7";
+  const whiteName = inArena ? (v7IsBlack ? "MARLIN V8" : "MARLIN V7") : "YOU";
   const whiteIsHuman = !inArena;
 
   const setEngine = (element, name) => {
@@ -533,7 +533,7 @@ function getArenaMove(version, depth) {
       // Progress messages keep the Arena visibly active while depth-6 search
       // is working. Only a final move or error settles this Promise.
       if (event.data.type === "progress") {
-        const engineName = event.data.version === "v7" ? "MARLIN V8" : "MARLIN V8";
+        const engineName = event.data.version === "v8" ? "MARLIN V8" : "MARLIN V7";
         const nodes = Number(event.data.nodes || 0).toLocaleString();
         const nps = Number(event.data.nps || 0).toLocaleString();
         const stage = event.data.stage || "searching";
@@ -597,7 +597,7 @@ async function startArenaMatch() {
   document.querySelector("#arena-live").textContent = "LIVE";
   const v7Color = arenaMatchCount % 2 === 0 ? "b" : "w";
   lastArenaV7Color = v7Color;
-  document.querySelector("#arena-progress").textContent = "V7 vs V6 — " + (v6Color === "b" ? "V7 White" : "V6 White") + " — match running";
+  document.querySelector("#arena-progress").textContent = "V8 vs V7 — " + (v7Color === "b" ? "V8 White" : "V7 White") + " — match running";
   document.querySelector("#arena-ply").textContent = "0 plies";
   render();
   try {
@@ -625,7 +625,7 @@ async function startArenaMatch() {
       document.querySelector("#arena-ply").textContent = game.history().length + " plies";
       const last = game.history({ verbose: true }).slice(-1)[0];
       document.querySelector("#arena-progress").textContent =
-        (v6Turn ? "Marlin V8" : "Marlin V8") + " played " + (last?.san || move.from + "-" + move.to);
+        (v7Turn ? "Marlin V7" : "Marlin V8") + " played " + (last?.san || move.from + "-" + move.to);
       await wait(speed);
     }
     if (game.isCheckmate()) {
