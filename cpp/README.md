@@ -27,3 +27,6 @@ g++ -std=c++20 -O2 -Wall -Wextra -Werror -pedantic \
   -o /tmp/marlin-bitboard-tests
 /tmp/marlin-bitboard-tests
 ```
+
+
+The C++ core is validated by the `MARLIN C++ Core Checks` GitHub Actions workflow.
