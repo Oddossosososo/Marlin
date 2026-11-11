@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "champion": {
+    "engine": "MARLIN V7",
+    "checkpoint": "main"
+  },
+  "challenger": {
+    "engine": "MARLIN V8",
+    "checkpoint": "v8-development",
+    "vetoed": false
+  },
+  "last_match": null
+}
