@@ -81,6 +81,7 @@ def main():
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--seed", type=int, default=47)
+    parser.add_argument("--model-name", default="MARLIN V7")
     parser.add_argument("--data-attribution", default="Operator-supplied PGN and Stockfish teacher labels; verify source licence.")
     args = parser.parse_args()
 
@@ -146,7 +147,7 @@ def main():
         "feature_encoding": "stm-relative-piece-square-v1",
         "output_scale_cp": 800,
         "training": {
-            "model": "MARLIN V7",
+            "model": args.model_name,
             "teacher": "Stockfish UCI centipawn evaluations",
             "positions": len(rows),
             "games": unique_games,
