@@ -8,7 +8,7 @@ MARLIN is an experimental browser chess engine and training project.
 - Iterative deepening, alpha-beta / negamax, transposition table, PVS, LMR and null-move pruning. Search stops at the selected depth; there is no fixed node-count cutoff. Depth 6 is the default in Play, Arena and PGN analysis. Arena reads the selected depth control and sends that same depth to both V7 and V6. Actual nodes, elapsed time and nodes per second (NPS) are reported. V7 uses numeric 53-bit Zobrist keys instead of BigInt, scores each move once before sorting, keeps a bounded transposition table and move-ordering history warm across turns, and reuses the previous root move as a principal-variation hint. V6's Arena search also reuses previous-move context instead of rebuilding the full game history at every node.
 - A dedicated handcrafted evaluation adds king safety, pawn structure, piece activity and mobility, bishop-pair value, rook files and endgame king activity. Structural weaknesses are evaluated as soft penalties; tactics can justify them.
 - Captures use standard chess material values. V7's handcrafted fallback explicitly scores the white-minus-black material balance, alongside positional terms. Static-exchange evaluation is used for capture ordering and quiescence pruning; it does not punish the capturing piece simply for taking.
-- The opening policy consults Lichess's master-game opening explorer, enforces the selected first-move repertoire, and falls back to the local curated lines when the service is unavailable.
+- V9 checks its local GM opening book first, then uses a curated classical repertoire that starts with 1.e4 rather than 1.Nc3 (the Van Geet). When no book move exists, it searches normally. V7 retains its separate opening policy.
 - V7 loads its own weights from `nnue/marlin-v7.nnue.json`. Until the V7 training workflow publishes that file, V7 uses its handcrafted evaluation.
 - Syzygy tablebase probing remains an optional online endgame helper.
 
@@ -19,6 +19,16 @@ The workflow `.github/workflows/train-marlin-v7.yml` trains the V7 NNUE using po
 The master-game positions shape the training distribution; Stockfish supplies consistent evaluation targets. This is not move imitation and does not prove GM strength. The workflow filters bot games, validates player rating/title metadata, validates model tensors, records dataset attribution and only then publishes V7 weights.
 
 Place authorised PGNs in `training/gm-games/` or pass an HTTPS PGN / PGN.zst URL to the workflow. Check the source's licence and preserve any required attribution. See `training/README-v7.md`. Lichess data collections have different licences: its rated-game/evaluation exports are CC0, while official broadcast PGNs are CC BY-SA 4.0.
+
+## V9 GM training and opening repertoire
+
+The `.github/workflows/train-marlin-v9.yml` workflow checks the official Lichess broadcast archive weekly. It downloads the newest complete monthly broadcast PGN, then filters games to titled masters or games where both players meet the minimum Elo threshold. Games marked BOT or ENGINE are always excluded, regardless of their Elo tags.
+
+Stockfish labels sampled positions from the human master games; additional Stockfish teacher positions are mixed in to train MARLIN's own 768x128x32x1 V9 NNUE. The same master PGNs build a move-frequency opening book. V9 uses that GM book first, then a curated classical fallback; the Van Geet Opening is not in the recommended repertoire. Deviating from book always returns to search.
+
+Lichess official broadcast PGNs are released under CC BY-SA 4.0. The trained files record source attribution and the dataset licence; the workflow does not publish the raw PGN archive. Review `training/README-v9.md` for the pipeline and limitations.
+
+**Current model status:** the checked-in opening-book file is initially empty, and the V9 NNUE is not considered active until the first training run publishes `nnue/marlin-v9.nnue.json`. Until then V9 uses its handcrafted evaluation and curated opening fallback. Training loss or GM-game exposure alone does not establish GM playing strength; use paired engine matches to measure it.
 
 ## V9 vs V8 Arena
 

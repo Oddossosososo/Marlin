@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
+#include <vector>
 
 #define CHECK(expression) do { \
     if (!(expression)) { \
@@ -57,6 +58,25 @@ int main() {
     char result[256]{};
     (void)marlin_cpp_search(start, 2, result, sizeof(result));
     CHECK(std::strncmp(result, "bestmove ", 9) == 0);
+
+    // Verify that V9 accepts trained NNUE weights and evaluates with the
+    // same side-to-move-relative output scale as the Python trainer.
+    std::vector<float> fc1W(768 * 128, 0.0f);
+    std::vector<float> fc1B(128, 0.0f);
+    std::vector<float> fc2W(128 * 32, 0.0f);
+    std::vector<float> fc2B(32, 0.0f);
+    std::vector<float> outW(32, 0.0f);
+    float outB = 0.0f;
+    fc1B[0] = 1.0f;
+    fc2W[0] = 1.0f;
+    outW[0] = 1.0f;
+    CHECK(marlin_cpp_nnue_enabled() == 0);
+    CHECK(marlin_cpp_set_nnue_weights(fc1W.data(), fc1B.data(), fc2W.data(),
+                                      fc2B.data(), outW.data(), &outB) == 1);
+    CHECK(marlin_cpp_nnue_enabled() == 1);
+    CHECK(marlin_cpp_evaluate_fen(start) == 800);
+    CHECK(marlin_cpp_set_nnue_weights(nullptr, fc1B.data(), fc2W.data(),
+                                      fc2B.data(), outW.data(), &outB) == 0);
 
     std::cout << "MARLIN C++ attacks, perft and search tests passed\n";
 }

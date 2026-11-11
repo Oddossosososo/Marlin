@@ -81,7 +81,9 @@ def main():
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--seed", type=int, default=47)
+    parser.add_argument("--model-name", default="MARLIN V7")
     parser.add_argument("--data-attribution", default="Operator-supplied PGN and Stockfish teacher labels; verify source licence.")
+    parser.add_argument("--data-license", default="Source dataset licence(s) recorded in data attribution.")
     args = parser.parse_args()
 
     random.seed(args.seed)
@@ -146,7 +148,7 @@ def main():
         "feature_encoding": "stm-relative-piece-square-v1",
         "output_scale_cp": 800,
         "training": {
-            "model": "MARLIN V7",
+            "model": args.model_name,
             "teacher": "Stockfish UCI centipawn evaluations",
             "positions": len(rows),
             "games": unique_games,
@@ -155,6 +157,7 @@ def main():
             "validation_positions": int(len(valid_ids)),
             "seed": args.seed,
             "data_attribution": args.data_attribution,
+            "data_license": args.data_license,
             "data_sha256": {
                 str(path): hashlib.sha256(Path(path).read_bytes()).hexdigest()
                 for path in args.data

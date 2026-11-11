@@ -1,0 +1,12 @@
+{
+  "format": "MARLIN_OPENING_BOOK_V1",
+  "model": "MARLIN V9",
+  "training": {
+    "games_seen": 0,
+    "games_accepted": 0,
+    "indexed_plies": 0,
+    "positions": 0,
+    "data_attribution": "No master PGN dataset trained yet. The curated opening fallback is active."
+  },
+  "positions": {}
+}

@@ -1,0 +1,223 @@
+name: Train MARLIN V9 from GM games
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      master_pgn_url:
+        description: "Optional HTTPS URL to a licensed PGN or PGN.zst file"
+        required: false
+        type: string
+        default: ""
+      data_attribution:
+        description: "Dataset attribution and licence notice"
+        required: true
+        type: string
+        default: "Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games; Stockfish labels."
+      min_elo:
+        description: "Minimum Elo for both players (master titles also qualify; BOT tags are always excluded)"
+        required: true
+        type: string
+        default: "2400"
+      teacher_games:
+        description: "Supplementary Stockfish self-play teacher games"
+        required: true
+        type: string
+        default: "300"
+      depth:
+        description: "Stockfish teacher depth"
+        required: true
+        type: string
+        default: "12"
+      epochs:
+        description: "NNUE training epochs"
+        required: true
+        type: string
+        default: "40"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: marlin-v9-gm-training
+  cancel-in-progress: false
+
+jobs:
+  check-input:
+    runs-on: ubuntu-latest
+    outputs:
+      available: ${{ steps.input.outputs.available }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: input
+        env:
+          MASTER_PGN_URL: ${{ inputs.master_pgn_url || '' }}
+        run: |
+          if [ -n "$MASTER_PGN_URL" ] || find training/gm-games -type f -name '*.pgn' -print -quit 2>/dev/null | grep -q .; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "No custom PGN supplied; automatic Lichess broadcast download is enabled."
+          fi
+
+  train:
+    needs: check-input
+    if: needs.check-input.outputs.available == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Stockfish and PGN decompressor
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y stockfish zstd
+          stockfish --version
+      - name: Install training dependencies
+        run: python -m pip install -r training/requirements.txt
+      - name: Prepare authorised master PGNs
+        env:
+          MASTER_PGN_URL: ${{ inputs.master_pgn_url || '' }}
+        run: |
+          mkdir -p training/gm-games training/data nnue
+          if [ -n "$MASTER_PGN_URL" ]; then
+            case "$MASTER_PGN_URL" in
+              https://*) ;;
+              *) echo "The PGN URL must use HTTPS."; exit 1 ;;
+            esac
+            curl --fail --location --retry 3 "$MASTER_PGN_URL" -o /tmp/marlin-v9-master-source
+            case "$MASTER_PGN_URL" in
+              *.pgn.zst|*.zst)
+                zstd --decompress --stdout /tmp/marlin-v9-master-source > training/gm-games/master-games.pgn
+                ;;
+              *)
+                cp /tmp/marlin-v9-master-source training/gm-games/master-games.pgn
+                ;;
+            esac
+          elif ! find training/gm-games -type f -name '*.pgn' -print -quit | grep -q .; then
+            # Official Lichess broadcasts are CC BY-SA 4.0. The index list is
+            # newest-first and is refreshed as monthly tournament PGNs arrive.
+            curl --fail --location --retry 3 https://database.lichess.org/broadcast/list.txt -o /tmp/lichess-broadcast-list.txt
+            ARCHIVE_URL="$(head -n 1 /tmp/lichess-broadcast-list.txt)"
+            case "$ARCHIVE_URL" in
+              https://database.lichess.org/broadcast/*.pgn.zst) ;;
+              *) echo "Unexpected Lichess broadcast archive URL."; exit 1 ;;
+            esac
+            echo "Downloading Lichess archive: $ARCHIVE_URL"
+            curl --fail --location --retry 3 "$ARCHIVE_URL" -o /tmp/marlin-v9-broadcast.pgn.zst
+            zstd --test /tmp/marlin-v9-broadcast.pgn.zst
+            zstd --decompress --stdout /tmp/marlin-v9-broadcast.pgn.zst > training/gm-games/lichess-broadcasts.pgn
+          fi
+          find training/gm-games -type f -name '*.pgn' -print
+      - name: Verify bot-tagged games are excluded
+        run: |
+          python - <<'PY'
+          import sys, chess
+          sys.path.insert(0, "training")
+          from generate_gm_dataset import player_is_human_master
+          assert not player_is_human_master({"WhiteTitle": "BOT", "WhiteElo": "3000"}, chess.WHITE, 2400)
+          assert not player_is_human_master({"BlackTitle": "ENGINE", "BlackElo": "2900"}, chess.BLACK, 2400)
+          assert player_is_human_master({"WhiteTitle": "GM", "WhiteElo": "0"}, chess.WHITE, 2400)
+          assert player_is_human_master({"BlackElo": "2600"}, chess.BLACK, 2400)
+          print("GM filters passed; BOT/ENGINE tags override inflated Elo headers.")
+          PY
+      - name: Build Stockfish-labelled human master positions
+        env:
+          MIN_ELO: ${{ inputs.min_elo || '2400' }}
+          TEACHER_DEPTH: ${{ inputs.depth || '12' }}
+        run: |
+          python training/generate_gm_dataset.py \
+            --pgn-dir training/gm-games \
+            --stockfish "$(command -v stockfish)" \
+            --min-elo "$MIN_ELO" \
+            --depth "$TEACHER_DEPTH" \
+            --sample-every 2 \
+            --max-positions 150000 \
+            --out training/data/marlin-v9-masters.jsonl
+      - name: Build V9 opening book from the same GM games
+        env:
+          MIN_ELO: ${{ inputs.min_elo || '2400' }}
+          DATA_ATTRIBUTION: ${{ inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
+        run: |
+          python training/generate_opening_book.py \
+            --pgn-dir training/gm-games \
+            --min-elo "$MIN_ELO" \
+            --max-ply 24 \
+            --min-samples 3 \
+            --data-attribution "$DATA_ATTRIBUTION" \
+            --data-license "Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)" \
+            --out nnue/marlin-v9-opening-book.json
+      - name: Generate supplementary Stockfish teacher positions
+        env:
+          GAMES: ${{ inputs.teacher_games || '300' }}
+          TEACHER_DEPTH: ${{ inputs.depth || '12' }}
+        run: |
+          python training/generate_dataset.py \
+            --stockfish "$(command -v stockfish)" \
+            --games "$GAMES" \
+            --depth "$TEACHER_DEPTH" \
+            --sample-every 2 \
+            --out training/data/marlin-v9-teacher.jsonl
+      - name: Train MARLIN V9 NNUE
+        env:
+          EPOCHS: ${{ inputs.epochs || '40' }}
+          DATA_ATTRIBUTION: ${{ inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
+        run: |
+          python training/train_nnue_v7.py \
+            --data training/data/marlin-v9-masters.jsonl \
+            --data training/data/marlin-v9-teacher.jsonl \
+            --epochs "$EPOCHS" \
+            --model-name "MARLIN V9" \
+            --data-attribution "$DATA_ATTRIBUTION" \
+            --data-license "Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)" \
+            --out nnue/marlin-v9.nnue.json
+      - name: Validate the V9 network and GM contribution
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          path = Path("nnue/marlin-v9.nnue.json")
+          model = json.loads(path.read_text(encoding="utf-8"))
+          assert model["format"] == "MARLIN_NNUE_V1"
+          assert model["model"] == "MARLIN V9"
+          assert model["architecture"] == "768x128x32x1"
+          assert model["feature_encoding"] == "stm-relative-piece-square-v1"
+          training = model["training"]
+          assert training["positions"] >= 1000
+          assert training["sources"].get("human-master-pgn", 0) >= 1000
+          assert training["model"] == "MARLIN V9"
+          weights = model["weights"]
+          assert len(weights["fc1_w"]) == 768 and all(len(row) == 128 for row in weights["fc1_w"])
+          assert len(weights["fc2_w"]) == 128 and all(len(row) == 32 for row in weights["fc2_w"])
+          assert len(weights["out_w"]) == 32
+          assert all(math.isfinite(value) for row in weights["fc1_w"] for value in row)
+          book = json.loads(Path("nnue/marlin-v9-opening-book.json").read_text(encoding="utf-8"))
+          assert book["format"] == "MARLIN_OPENING_BOOK_V1"
+          assert book["model"] == "MARLIN V9"
+          assert book["training"]["games_accepted"] > 0
+          print("Validated V9 NNUE:", training)
+          print("Validated V9 GM opening book:", book["training"])
+          PY
+      - name: Publish V9 NNUE and opening book
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f nnue/marlin-v9.nnue.json nnue/marlin-v9-opening-book.json
+          if git diff --cached --quiet; then
+            echo "V9 training artifacts unchanged."
+          else
+            git commit -m "Publish GM-trained MARLIN V9 NNUE and opening book"
+            git push
+          fi
+      - name: Upload V9 training datasets
+        uses: actions/upload-artifact@v5
+        with:
+          name: marlin-v9-gm-training-data
+          path: |
+            training/data/marlin-v9-masters.jsonl
+            training/data/marlin-v9-teacher.jsonl
+          retention-days: 14

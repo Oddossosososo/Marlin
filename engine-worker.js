@@ -1,49 +1,8 @@
 import { Chess } from "https://esm.sh/chess.js@1.4.0";
 import { findBestMove as findPolicyMove, initialiseV7 } from "./engine-v7-policy.js";
 import { findBestMove as findSearchMove } from "./engine-v7.js";
-
-let cppModulePromise = null;
-
-async function findCppMove(fen, requestedDepth) {
-  if (!cppModulePromise) {
-    cppModulePromise = import("./marlin-wasm.js").then(async module => {
-      const factory = module.default || module;
-      return factory();
-    }).catch(error => {
-      cppModulePromise = null;
-      throw error;
-    });
-  }
-  const wasm = await cppModulePromise;
-  const fenSize = new TextEncoder().encode(fen).length + 1;
-  const fenPtr = wasm._malloc(fenSize);
-  const outPtr = wasm._malloc(512);
-  const started = performance.now();
-  try {
-    wasm.stringToUTF8(fen, fenPtr, fenSize);
-    const depth = Math.max(1, Math.min(12, Math.floor(Number(requestedDepth) || 6)));
-    wasm._marlin_cpp_search(fenPtr, depth, outPtr, 512);
-    const output = wasm.UTF8ToString(outPtr);
-    const match = output.match(/^bestmove ([a-h][1-8][a-h][1-8][qrbn]?)/);
-    if (!match) throw new Error("C++ search returned no move: " + output);
-    const uci = match[1];
-    const nodes = Number((output.match(/\bnodes (\d+)/) || [])[1] || 0);
-    const elapsedMs = Math.max(1, Math.round(performance.now() - started));
-    return {
-      from: uci.slice(0, 2),
-      to: uci.slice(2, 4),
-      promotion: uci[4] || "q",
-      source: "cpp-wasm",
-      nodes,
-      elapsedMs,
-      nps: Math.round(nodes * 1000 / elapsedMs),
-      depth
-    };
-  } finally {
-    wasm._free(fenPtr);
-    wasm._free(outPtr);
-  }
-}
+import { initialiseV9OpeningBook, selectV9OpeningMove } from "./opening-book-v9.js";
+import { searchV9, v9NnueStatus } from "./marlin-v9.js";
 
 self.onmessage = async (event) => {
   const { pgn, depth = 6, requestId } = event.data || {};
@@ -54,22 +13,20 @@ self.onmessage = async (event) => {
     let move;
     let fallbackUsed = false;
     let initialised = { nnue: false };
+    await initialiseV9OpeningBook();
 
     try {
-      move = await findCppMove(positionFen, depth);
-      self.postMessage({
-        requestId,
-        type: "progress",
-        engine: "cpp",
-        stage: "depth-complete",
-        depth: move.depth,
-        completedDepth: move.depth,
-        nodes: move.nodes,
-        nps: move.nps,
-        elapsedMs: move.elapsedMs
-      });
+      move = selectV9OpeningMove(game);
+      if (move) {
+        self.postMessage({ requestId, type: "progress", engine: "v9", stage: "opening-book", depth: 0, nodes: 0 });
+      } else {
+        move = await searchV9(positionFen, depth, details =>
+          self.postMessage({ requestId, type: "progress", engine: "v9", ...details })
+        );
+      }
+      initialised = v9NnueStatus();
     } catch (cppError) {
-      console.warn("MARLIN C++ WebAssembly unavailable; using V7 fallback:", cppError);
+      console.warn("MARLIN V9 C++ WebAssembly unavailable; using V7 fallback:", cppError);
       initialised = await initialiseV7();
       try {
         move = await findPolicyMove(game, depth, {

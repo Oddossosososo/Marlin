@@ -36,8 +36,8 @@ jobs:
             -s ENVIRONMENT=web,worker,node \
             -s ALLOW_MEMORY_GROWTH=1 \
             -s FILESYSTEM=0 \
-            -s EXPORTED_FUNCTIONS='["_marlin_cpp_search","_marlin_cpp_perft","_malloc","_free"]' \
-            -s EXPORTED_RUNTIME_METHODS='["UTF8ToString","stringToUTF8"]' \
+            -s EXPORTED_FUNCTIONS='["_marlin_cpp_search","_marlin_cpp_perft","_marlin_cpp_set_nnue_weights","_marlin_cpp_nnue_enabled","_marlin_cpp_evaluate_fen","_malloc","_free"]' \
+            -s EXPORTED_RUNTIME_METHODS='["UTF8ToString","stringToUTF8","HEAPF32"]' \
             -o marlin-wasm.js
       - name: Smoke-test the compiled WebAssembly search
         run: |
@@ -59,6 +59,32 @@ jobs:
               throw new Error("C++ WASM did not report searched nodes: " + result);
             }
             console.log("C++ WASM smoke test passed:", result);
+
+            const fc1W = new Float32Array(768 * 128);
+            const fc1B = new Float32Array(128);
+            const fc2W = new Float32Array(128 * 32);
+            const fc2B = new Float32Array(32);
+            const outW = new Float32Array(32);
+            const outB = new Float32Array([0]);
+            fc1B[0] = 1;
+            fc2W[0] = 1;
+            outW[0] = 1;
+            const tensors = [fc1W, fc1B, fc2W, fc2B, outW, outB];
+            const ptrs = tensors.map(values => wasm._malloc(values.byteLength));
+            try {
+              if (ptrs.some(ptr => !ptr)) throw new Error("Could not allocate smoke-test NNUE buffers.");
+              tensors.forEach((values, i) => wasm.HEAPF32.set(values, ptrs[i] >>> 2));
+              const installed = wasm._marlin_cpp_set_nnue_weights(...ptrs);
+              if (installed !== 1 || wasm._marlin_cpp_nnue_enabled() !== 1) {
+                throw new Error("V9 C++ WebAssembly did not accept NNUE weights.");
+              }
+              if (wasm._marlin_cpp_evaluate_fen(fenPtr) !== 800) {
+                throw new Error("V9 C++ WebAssembly NNUE evaluation returned an unexpected score.");
+              }
+              console.log("V9 C++ WebAssembly NNUE installation and evaluation passed.");
+            } finally {
+              ptrs.forEach(ptr => { if (ptr) wasm._free(ptr); });
+            }
           } finally {
             wasm._free(fenPtr);
             wasm._free(outPtr);

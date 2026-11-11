@@ -32,7 +32,7 @@ export function selectOpeningMove(game) {
     for (let i = 0; i < history.length; i++) {
       if (history[i] !== line[i]) { matches = false; break; }
     }
-    if (matches && line.length > history.length && history.length >= selectedLength) {
+    if (matches && line.length > history.length && history.length > selectedLength) {
       selectedSan = line[history.length];
       selectedLength = history.length;
     }

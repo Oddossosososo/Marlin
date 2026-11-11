@@ -14,7 +14,7 @@ import chess.engine
 import chess.pgn
 
 
-BOT_TITLES = {"BOT", "ENGINE", "COMPUTER"}
+BOT_TITLES = {"BOT", "ENGINE", "COMPUTER", "AI"}
 MASTER_TITLES = {"GM", "WGM", "IM", "WIM", "FM", "WFM"}
 
 
@@ -80,6 +80,9 @@ def main():
                         game_index += 1
                         games_seen += 1
                         headers = game.headers
+                        variant = headers.get("Variant", "Standard").strip().lower()
+                        if variant not in {"standard", "chess"}:
+                            continue
                         if not (
                             player_is_human_master(headers, chess.WHITE, args.min_elo)
                             and player_is_human_master(headers, chess.BLACK, args.min_elo)

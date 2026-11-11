@@ -1,5 +1,6 @@
 import { Chess } from "chess.js";
-import { searchV9, initialiseV9 } from "./marlin-v9.js";
+import { searchV9, initialiseV9, v9NnueStatus } from "./marlin-v9.js";
+import { initialiseV9OpeningBook, selectV9OpeningMove } from "./opening-book-v9.js";
 
 const TOKEN = process.env.LICHESS_TOKEN;
 const USERNAME = (process.env.LICHESS_USERNAME || "").toLowerCase();
@@ -84,7 +85,22 @@ function parsePosition(initialFen, uciMoves) {
 async function makeBotMove(game, gameId) {
   if (game.isGameOver()) return;
 
-  const result = await searchV9(game.fen(), DEPTH);
+  const bookMove = selectV9OpeningMove(game);
+  const result = bookMove
+    ? {
+        from: bookMove.from,
+        to: bookMove.to,
+        promotion: bookMove.promotion || null,
+        uci: bookMove.from + bookMove.to + (bookMove.promotion || ""),
+        source: bookMove.source,
+        bookGames: bookMove.bookGames || 0,
+        depth: 0,
+        nodes: 0,
+        nps: 0,
+        elapsedMs: 0
+      }
+    : await searchV9(game.fen(), DEPTH);
+
   const legalMove = game.moves({ verbose: true }).find(move =>
     move.from === result.from &&
     move.to === result.to &&
@@ -95,9 +111,13 @@ async function makeBotMove(game, gameId) {
     throw new Error("V9 returned a move that is not legal in the current Lichess position: " + result.uci);
   }
 
-  console.log(
-    `MARLIN V9 depth ${result.depth}: ${result.uci} | ${result.nodes} nodes | ${result.nps} n/s | ${result.elapsedMs.toFixed(1)} ms`
-  );
+  if (result.source === "gm-opening-book" || result.source === "curated-opening-book") {
+    console.log(`MARLIN V9 ${result.source}: ${result.uci} | ${result.bookGames || 0} master games`);
+  } else {
+    console.log(
+      `MARLIN V9 depth ${result.depth}${result.nnue ? " · NNUE" : " · HCE"}: ${result.uci} | ${result.nodes} nodes | ${result.nps} n/s | ${result.elapsedMs.toFixed(1)} ms`
+    );
+  }
 
   await request(`/bot/game/${encodeURIComponent(gameId)}/move/${encodeURIComponent(result.uci)}`, {
     method: "POST",
@@ -182,7 +202,10 @@ async function main() {
   if (!botId) throw new Error("Could not identify the Lichess account.");
 
   console.log(`Connected to Lichess as ${account.username || botId}`);
-  console.log(`MARLIN V9 ready at depth ${DEPTH}. Accepting standard-chess challenges.`);
+  const bookInfo = await initialiseV9OpeningBook();
+  const nnueInfo = v9NnueStatus();
+  console.log(`MARLIN V9 ready at depth ${DEPTH}. NNUE: ${nnueInfo.enabled ? "enabled" : "handcrafted fallback"}. GM book positions: ${bookInfo.positions || 0}.`);
+  console.log("Accepting standard-chess challenges.");
 
   const activeGames = new Set();
   while (true) {
