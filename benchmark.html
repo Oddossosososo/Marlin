@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101722">
+  <title>MARLIN · Engine Benchmark</title>
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    .bench-page{max-width:1100px;margin:0 auto;padding:28px 22px 48px}
+    .bench-top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}
+    .bench-title{display:flex;align-items:center;gap:14px}.bench-title img{width:58px;height:58px;object-fit:contain;background:#fff;border-radius:12px;padding:3px}
+    .bench-title h1{font-size:25px;letter-spacing:2px;margin:0}.bench-title p,.bench-muted{color:var(--muted);font-size:12px}
+    .bench-card{background:#111b26;border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0}
+    .bench-controls{display:flex;gap:12px;align-items:end;flex-wrap:wrap}.bench-controls label{display:grid;gap:7px;font-size:10px;letter-spacing:1px;color:var(--muted)}
+    .bench-controls select{min-width:150px}
+    .bench-status{margin-top:14px;color:var(--accent);font-size:12px;min-height:18px}
+    .bench-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .bench-stat{padding:16px;border:1px solid var(--line);border-radius:10px;background:#0d1721}.bench-stat small{display:block;color:var(--muted);font-size:9px;letter-spacing:1px}.bench-stat strong{display:block;font-size:24px;margin-top:7px;font-variant-numeric:tabular-nums}
+    .bench-table{width:100%;border-collapse:collapse;font-size:12px}.bench-table th,.bench-table td{text-align:left;padding:12px 9px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}.bench-table th{color:var(--muted);font-size:9px;letter-spacing:1px}
+    .bench-note{font-size:11px;line-height:1.6;color:var(--muted)}
+    .bench-back{color:var(--accent);text-decoration:none;font-size:12px}
+    @media(max-width:650px){.bench-page{padding:18px 12px}.bench-grid{grid-template-columns:1fr}.bench-table{font-size:10px}.bench-table th,.bench-table td{padding:9px 5px}.bench-top{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <main class="bench-page">
+    <div class="bench-top">
+      <div class="bench-title"><img src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><h1>MARLIN BENCHMARK</h1><p>V7 JAVASCRIPT vs C++ WEBASSEMBLY</p></div></div>
+      <a class="bench-back" href="./index.html">← Back to Marlin</a>
+    </div>
+    <section class="bench-card">
+      <div class="section-title">CONTROLLED SPEED TEST</div>
+      <p class="bench-muted">Both engines run in this browser, on the same device, against the same FEN positions and depth. Run the test more than once for a steadier comparison.</p>
+      <div class="bench-controls">
+        <label for="bench-depth">SEARCH DEPTH
+          <select id="bench-depth"><option value="3">Depth 3</option><option value="4">Depth 4</option><option value="5" selected>Depth 5</option><option value="6">Depth 6</option><option value="7">Depth 7</option><option value="8">Depth 8</option></select>
+        </label>
+        <button class="primary" id="bench-run">Run benchmark</button>
+        <button id="bench-reset">Clear results</button>
+      </div>
+      <div class="bench-status" id="bench-status" role="status" aria-live="polite">Ready. Close other heavy tabs for a cleaner result.</div>
+    </section>
+    <section class="bench-grid">
+      <div class="bench-stat"><small>FASTER ENGINE</small><strong id="bench-winner">—</strong></div>
+      <div class="bench-stat"><small>AVERAGE SPEED RATIO</small><strong id="bench-ratio">—</strong></div>
+      <div class="bench-stat"><small>TESTED DEPTH</small><strong id="bench-tested-depth">—</strong></div>
+    </section>
+    <section class="bench-card">
+      <div class="section-title">POSITION RESULTS</div>
+      <div style="overflow-x:auto">
+        <table class="bench-table">
+          <thead><tr><th>POSITION</th><th>V7 TIME</th><th>C++ TIME</th><th>V7 NPS</th><th>C++ NPS</th><th>FASTER</th></tr></thead>
+          <tbody id="bench-results"><tr><td colspan="6" class="bench-muted">No benchmark run yet.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="bench-card">
+      <div class="section-title">HOW TO READ THIS</div>
+      <p class="bench-note">Time is the main speed comparison: lower is faster. NPS means searched nodes per second, but node counts are not directly equivalent between different search algorithms. Both engines are asked to complete the same depth; their evaluation and pruning methods differ. This is a browser/device benchmark, not an Elo rating or a strength test. Results can vary with device load, browser, and thermal throttling.</p>
+    </section>
+  </main>
+  <script type="module" src="./benchmark.js"></script>
+</body>
+</html>
