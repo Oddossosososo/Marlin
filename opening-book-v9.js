@@ -41,12 +41,7 @@ export function selectV9OpeningMove(game) {
   const isInitialWhitePosition =
     game.history().length === 0 &&
     game.turn() === "w" &&
-    game.board().flat().filter(Boolean).length === 32;
-
-  if (isInitialWhitePosition) {
-    const curated = selectV9CuratedOpeningMove(game);
-    if (curated) return curated;
-  }
+    game.fen().startsWith("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
 
   if (book) {
     const key = game.fen().split(" ").slice(0, 4).join(" ");
