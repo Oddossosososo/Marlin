@@ -31,10 +31,14 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
+      - name: Install chess rules library for engine smoke tests
+        run: npm install --no-save chess.js
       - name: Check V8 JavaScript syntax
         run: |
           set -euo pipefail
-          for file in engine-v8.js evaluation-v8.js arena-worker.js app.js; do
+          for file in engine-v8.js evaluation-v8.js arena-worker.js app.js training/smoke-v8.mjs; do
             echo "Checking $file"
             node --input-type=module --check < "$file"
           done
+      - name: Verify V8 and V7 return legal moves
+        run: node training/smoke-v8.mjs
