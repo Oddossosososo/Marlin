@@ -31,8 +31,8 @@ async function findV9Move(fen, requestedDepth, reportProgress) {
     const match = output.match(/^bestmove ([a-h][1-8][a-h][1-8][qrbn]?)/);
     if (!match) throw new Error("MARLIN V9 returned no move: " + output);
 
-    const nodes = Number((output.match(/\\bnodes (\\d+)/) || [])[1] || 0);
-    const reachedDepth = Number((output.match(/\\bdepth (\\d+)/) || [])[1] || 0);
+    const nodes = Number((output.match(/\bnodes (\d+)/) || [])[1] || 0);
+    const reachedDepth = Number((output.match(/\bdepth (\d+)/) || [])[1] || 0);
     if (reachedDepth !== depth) {
       throw new Error("MARLIN V9 reached depth " + reachedDepth + " instead of " + depth + ".");
     }
