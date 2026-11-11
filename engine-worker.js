@@ -14,9 +14,8 @@ async function findCppMove(fen, requestedDepth) {
       throw error;
     });
   }
-
   const wasm = await cppModulePromise;
-  const fenBytes = new TextEncoder().encode(fen + "\\0");
+  const fenBytes = new TextEncoder().encode(fen + "\0");
   const fenPtr = wasm._malloc(fenBytes.length);
   const outPtr = wasm._malloc(512);
   const started = performance.now();
@@ -29,7 +28,7 @@ async function findCppMove(fen, requestedDepth) {
     const match = output.match(/^bestmove ([a-h][1-8][a-h][1-8][qrbn]?)/);
     if (!match) throw new Error("C++ search returned no move: " + output);
     const uci = match[1];
-    const nodes = Number((output.match(/\\bnodes (\\d+)/) || [])[1] || 0);
+    const nodes = Number((output.match(/\bnodes (\d+)/) || [])[1] || 0);
     const elapsedMs = Math.max(1, Math.round(performance.now() - started));
     return {
       from: uci.slice(0, 2),
