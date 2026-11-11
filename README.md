@@ -59,7 +59,7 @@ V8 is retained as the JavaScript comparison engine. Its search includes reverse-
 
 ## Lichess bot
 
-The Lichess bot now uses MARLIN V9's C++ WebAssembly search through `marlin-v9.js`. The workflow is manually started from the `main` branch and runs a smoke test against legal chess positions before connecting to Lichess.
+The Lichess bot uses MARLIN V9's C++ WebAssembly search through `marlin-v9.js`. The workflow starts automatically every six hours (UTC) from `main`, and can also be manually started. Each run tests legal chess moves before connecting to Lichess.
 
 Required repository settings:
 - Secret `LICHESS_TOKEN`: a token created for the dedicated Lichess BOT account with the `bot:play` scope.
@@ -69,4 +69,4 @@ Required repository settings:
 
 The startup check verifies the BOT account before loading WebAssembly. Authentication failures now explain the required token scope. Dropped game streams reconnect with backoff, and rejected or stale moves are retried from a fresh game snapshot.
 
-The bot accepts standard-chess challenges only. It does not start automatically on a code push; manually dispatch the **MARLIN V9 Lichess Bot** workflow on `main` after configuring the secret and variables. Keep the workflow run active while the bot is online.
+The bot accepts standard-chess challenges only. GitHub Actions stops a run after 350 minutes; the six-hour schedule starts the next run automatically, leaving a short restart gap. For an immediate start, manually dispatch the **MARLIN V9 Lichess Bot** workflow on `main` after configuring the secret and variables.
