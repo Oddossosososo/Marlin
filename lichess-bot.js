@@ -36,9 +36,19 @@ function wait(ms) {
 }
 
 function retryDelay(error, attempt) {
-  const retryAfter = Number(error?.retryAfter);
-  if (Number.isFinite(retryAfter) && retryAfter > 0) {
-    return Math.min(30000, Math.max(1000, retryAfter * 1000));
+  const rawRetryAfter = error?.retryAfter;
+  const retrySeconds = Number(rawRetryAfter);
+  const retryDate = rawRetryAfter && !Number.isFinite(retrySeconds)
+    ? Date.parse(rawRetryAfter)
+    : NaN;
+  const retryMs = Number.isFinite(retrySeconds) && retrySeconds > 0
+    ? retrySeconds * 1000
+    : Number.isFinite(retryDate)
+      ? retryDate - Date.now()
+      : NaN;
+
+  if (Number.isFinite(retryMs) && retryMs > 0) {
+    return Math.min(30000, Math.max(1000, retryMs));
   }
   return Math.min(15000, 1000 * (2 ** Math.min(attempt - 1, 4)));
 }
@@ -48,6 +58,7 @@ async function readNdjson(response, onObject) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let pending = "";
+  let streamEnded = false;
 
   async function processLine(line) {
     if (!line.trim()) return;
@@ -65,7 +76,10 @@ async function readNdjson(response, onObject) {
   try {
     while (true) {
       const { value, done } = await reader.read();
-      if (done) break;
+      if (done) {
+        streamEnded = true;
+        break;
+      }
       pending += decoder.decode(value, { stream: true });
       const lines = pending.split("\n");
       pending = lines.pop() || "";
@@ -74,6 +88,10 @@ async function readNdjson(response, onObject) {
     pending += decoder.decode();
     if (pending.trim()) await processLine(pending);
   } finally {
+    // A handler error must close the old HTTP stream before reconnecting.
+    if (!streamEnded) {
+      await reader.cancel().catch(() => {});
+    }
     reader.releaseLock();
   }
 }
