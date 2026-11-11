@@ -1,5 +1,6 @@
 import { Chess } from "https://esm.sh/chess.js@1.4.0";
 import { findBestMove as findPolicyMove, initialiseV7 } from "./engine-v7-policy.js";
+import { findBestMove as findSearchMove } from "./engine-v7.js";
 import { initialiseV9OpeningBook, selectV9OpeningMove } from "./opening-book-v9.js";
 import { searchV9, v9NnueStatus } from "./marlin-v9.js";
 
