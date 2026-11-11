@@ -36,12 +36,26 @@ export async function initialiseV9OpeningBook() {
 }
 
 export function selectV9OpeningMove(game) {
+  // Never let a learned book recommend the Van Geet as White's first move.
+  // This is a hard repertoire rule, not a statistical preference.
+  const isInitialWhitePosition =
+    game.history().length === 0 &&
+    game.turn() === "w" &&
+    game.board().flat().filter(Boolean).length === 32;
+
+  if (isInitialWhitePosition) {
+    const curated = selectV9CuratedOpeningMove(game);
+    if (curated) return curated;
+  }
+
   if (book) {
     const key = game.fen().split(" ").slice(0, 4).join(" ");
     const entries = book.positions[key] || [];
     if (entries.length) {
       const legal = game.moves({ verbose: true });
       const candidates = entries.map(entry => {
+        // b1c3 is deliberately excluded at the initial position (Van Geet).
+        if (isInitialWhitePosition && entry.uci === "b1c3") return null;
         const match = /^([a-h][1-8])([a-h][1-8])([qrbn])?$/.exec(entry.uci || "");
         if (!match) return null;
         const move = legal.find(candidate =>
