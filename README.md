@@ -62,11 +62,13 @@ V8 is retained as the JavaScript comparison engine. Its search includes reverse-
 The Lichess bot uses MARLIN V9's C++ WebAssembly search through `marlin-v9.js`. The workflow starts automatically every six hours (UTC) from `main`, and can also be manually started. Each run tests legal chess moves before connecting to Lichess.
 
 Required repository settings:
-- Secret `LICHESS_TOKEN`: a token created for the dedicated Lichess BOT account with the `bot:play` scope.
-- The account must have the `BOT` title. Lichess does not allow ordinary accounts to use the Bot API. Upgrading is irreversible and only possible before the account has played any game, so do not upgrade a personal playing account.
+- Secret `LICHESS_TOKEN`: create an API token for the dedicated Lichess BOT account with the `bot:play` scope.
+- The account must already have the `BOT` title. The Lichess Bot API rejects normal accounts. Upgrading an account is irreversible and is only possible before it has played any game, so do not upgrade a personal playing account.
 - Optional variable `LICHESS_USERNAME`: account name used as a fallback when identifying the bot's colour.
 - Optional variable `MARLIN_DEPTH`: search depth from 1 to 12; defaults to 4 to keep move times practical.
 
-The startup check verifies the BOT account before loading WebAssembly. Authentication failures now explain the required token scope. Dropped game streams reconnect with backoff, and rejected or stale moves are retried from a fresh game snapshot.
+The startup check verifies the account title before loading WebAssembly. Authentication errors now explain whether the token or BOT account setup needs attention. During a game, a dropped Lichess game stream is reconnected with backoff; rejected/stale moves are retried from a fresh game snapshot.
 
 The bot accepts standard-chess challenges only. GitHub Actions stops a run after 350 minutes; the six-hour schedule starts the next run automatically, leaving a short restart gap. For an immediate start, manually dispatch the **MARLIN V9 Lichess Bot** workflow on `main` after configuring the secret and variables.
+
+See the [official Lichess Bot API documentation](https://lichess.org/api#tag/bot) for account and token requirements.

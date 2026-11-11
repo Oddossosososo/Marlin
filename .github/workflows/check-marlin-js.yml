@@ -36,14 +36,16 @@ jobs:
             benchmark.js \
             marlin-v9.js \
             opening-book-v9.js \
+            opening-policy-v9.js \
             opening-book-v9-smoke-test.js \
             lichess-bot.js \
             lichess-v9-smoke-test.js \
             training/smoke-v8.mjs \
             app.js
           do
-            echo "Checking $file"
+            echo "::group::Checking $file"
             node --input-type=module --check < "$file"
+            echo "::endgroup::"
           done
           node training/smoke-v8.mjs
           node lichess-v9-smoke-test.js
