@@ -7,6 +7,12 @@ on:
       - "cpp/**"
       - "engine-worker.js"
       - ".github/workflows/build-marlin-wasm.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "cpp/**"
+      - "engine-worker.js"
+      - ".github/workflows/build-marlin-wasm.yml"
   workflow_dispatch:
 
 permissions:
@@ -18,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
       - uses: mymindstorm/setup-emsdk@v14
       - name: Compile optimized browser engine
         run: |
@@ -39,5 +45,9 @@ jobs:
           git add marlin-wasm.js marlin-wasm.wasm
           if ! git diff --cached --quiet; then
             git commit -m "Build optimized MARLIN C++ WebAssembly engine"
-            git push origin "HEAD:${{ github.ref_name }}"
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+            else
+              git push origin "HEAD:${{ github.ref_name }}"
+            fi
           fi
