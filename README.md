@@ -38,3 +38,10 @@ https://oddossosososo.github.io/Marlin/
 
 - Play, Arena and PGN analysis expose search depths 1–22. Depth 22 is an experimental upper limit and can take a very long time; it is not a promise that every position will reach depth 22 quickly. Play includes a Stop search control, and Arena has its existing Stop control.
 - The board uses locally stored Cburnett SVG chess-piece artwork by Colin M. L. Burnett. See [PIECE-ATTRIBUTION.md](PIECE-ATTRIBUTION.md).
+
+
+## MARLIN V8 challenger
+
+MARLIN V8 is available in the Engine Battle Arena against the V7 champion. The V8 search branch adds shallow reverse-futility, futility and late-move pruning plus check extensions and aspiration-window search. The V8 Arena alternates colours between games and reports wins and draws.
+
+V7 remains the default playing engine and champion. V8 currently shares the V7 NNUE weights and evaluation baseline; it is a search experiment, not yet a proven strength upgrade. Use the Arena and automated legal-move smoke tests before making any promotion or Elo claim.
