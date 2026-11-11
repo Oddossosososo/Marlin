@@ -1,0 +1,12 @@
+{
+  "name": "marlin-chess-engine",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "lichess-bot": "node lichess-bot.js"
+  },
+  "dependencies": {
+    "chess.js": "^1.4.0"
+  }
+}
