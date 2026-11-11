@@ -62,8 +62,11 @@ V8 is retained as the JavaScript comparison engine. Its search includes reverse-
 The Lichess bot now uses MARLIN V9's C++ WebAssembly search through `marlin-v9.js`. The workflow is manually started from the `main` branch and runs a smoke test against legal chess positions before connecting to Lichess.
 
 Required repository settings:
-- Secret `LICHESS_TOKEN`: a Lichess bot-account API token with the permissions required by the bot API.
+- Secret `LICHESS_TOKEN`: a token created for the dedicated Lichess BOT account with the `bot:play` scope.
+- The account must have the `BOT` title. Lichess does not allow ordinary accounts to use the Bot API. Upgrading is irreversible and only possible before the account has played any game, so do not upgrade a personal playing account.
 - Optional variable `LICHESS_USERNAME`: account name used as a fallback when identifying the bot's colour.
 - Optional variable `MARLIN_DEPTH`: search depth from 1 to 12; defaults to 4 to keep move times practical.
+
+The startup check verifies the BOT account before loading WebAssembly. Authentication failures now explain the required token scope. Dropped game streams reconnect with backoff, and rejected or stale moves are retried from a fresh game snapshot.
 
 The bot accepts standard-chess challenges only. It does not start automatically on a code push; manually dispatch the **MARLIN V9 Lichess Bot** workflow on `main` after configuring the secret and variables. Keep the workflow run active while the bot is online.
