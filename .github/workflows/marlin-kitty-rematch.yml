@@ -18,9 +18,9 @@ jobs:
   challenge:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 350
     steps:
-      - name: Send one casual 5+0 rematch challenge
+      - name: Replace the earlier invite and send a Black-side rematch
         env:
           LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}
         shell: bash
@@ -32,11 +32,30 @@ jobs:
             exit 1
           fi
 
-          echo "Challenging KittyEngineV5 to a casual Standard 5+0 game."
-          echo "The accepting player is set to White, so MARLIN will play Black."
-          echo "If Lichess returns HTTP 403, the token needs challenge:write in addition to bot:play."
+          # Cancel the earlier incorrectly-coloured invitation if it is
+          # still pending. It may already have expired.
+          curl --silent --show-error \
+            --request POST \
+            --url "https://lichess.org/api/challenge/PgNaeVLM/cancel" \
+            --header "Authorization: Bearer ${LICHESS_TOKEN}" \
+            >/dev/null || true
 
-          response="$(curl --silent --show-error --fail-with-body \
+          # Do not create a second game if MARLIN is already playing.
+          playing="$(curl --silent --show-error --fail-with-body \
+            --url "https://lichess.org/api/account/playing" \
+            --header "Authorization: Bearer ${LICHESS_TOKEN}")"
+          active_count="$(jq '.nowPlaying | length' <<<"$playing")"
+          if [[ "$active_count" -gt 0 ]]; then
+            echo "::error::MARLIN already has an active game. Not creating another challenge."
+            jq -r '.nowPlaying[] | "Active game: " + .gameId + " vs " + (.opponent.username // "unknown")' <<<"$playing"
+            exit 1
+          fi
+
+          echo "Challenging KittyEngineV5 to a casual Standard 5+0 rematch."
+          echo "MARLIN is explicitly requesting Black."
+          echo "Keeping the challenge alive until Kitty accepts or declines."
+
+          curl --silent --show-error --fail-with-body --no-buffer \
             --request POST \
             --url "https://lichess.org/api/challenge/KittyEngineV5" \
             --header "Authorization: Bearer ${LICHESS_TOKEN}" \
@@ -44,17 +63,18 @@ jobs:
             --data-urlencode "rated=false" \
             --data-urlencode "clock.limit=300" \
             --data-urlencode "clock.increment=0" \
-            --data-urlencode "color=white" \
-            --data-urlencode "variant=standard")"
-
-          challenge_url="$(jq -r '.challenge.url // .url // empty' <<<"$response")"
-          challenge_id="$(jq -r '.challenge.id // .id // empty' <<<"$response")"
-
-          if [[ -n "$challenge_url" ]]; then
-            echo "Challenge created: $challenge_url"
-          elif [[ -n "$challenge_id" ]]; then
-            echo "Challenge created with ID: $challenge_id"
-          else
-            echo "Lichess response:"
-            jq '{challenge: .challenge, url: .url, error: .error}' <<<"$response"
-          fi
+            --data-urlencode "color=black" \
+            --data-urlencode "variant=standard" \
+            --data-urlencode "keepAliveStream=true" |
+          while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            challenge_url="$(jq -r '.challenge.url // empty' <<<"$line")"
+            if [[ -n "$challenge_url" ]]; then
+              echo "Rematch challenge created: $challenge_url"
+            fi
+            done_status="$(jq -r '.done // empty' <<<"$line")"
+            if [[ -n "$done_status" ]]; then
+              echo "Lichess challenge status: $done_status"
+              break
+            fi
+          done
