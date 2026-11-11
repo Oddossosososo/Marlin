@@ -1,4 +1,4 @@
-name: MARLIN Lichess Bot
+name: MARLIN V9 Lichess Bot
 
 on:
   workflow_dispatch:
@@ -6,13 +6,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: marlin-v9-lichess-bot
+  cancel-in-progress: false
+
 jobs:
   lichess-bot:
-    if: github.ref == 'refs/heads/v8-development'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:
-      - name: Check out MARLIN
+      - name: Check out MARLIN V9
         uses: actions/checkout@v5
 
       - name: Set up Node.js
@@ -20,17 +24,21 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install bot dependencies
+        run: npm install --no-audit --no-fund
 
-      - name: Check bot and engine syntax
+      - name: Check V9 bot syntax
         run: |
+          node --check marlin-v9.js
           node --check lichess-bot.js
-          node --check engine-v8.js
+          node --check lichess-v9-smoke-test.js
 
-      - name: Start MARLIN V8 on Lichess
+      - name: Test V9 WebAssembly search and legal moves
+        run: npm run test:lichess-v9
+
+      - name: Start MARLIN V9 on Lichess
         env:
           LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}
           LICHESS_USERNAME: ${{ vars.LICHESS_USERNAME }}
-          MARLIN_DEPTH: "4"
+          MARLIN_DEPTH: "${{ vars.MARLIN_DEPTH || '4' }}"
         run: npm run lichess-bot
