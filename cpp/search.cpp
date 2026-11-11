@@ -2,6 +2,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <cctype>
 #include <limits>
 #include <string>
 #include <vector>
@@ -20,7 +21,7 @@ constexpr int CASTLE_WK=1, CASTLE_WQ=2, CASTLE_BK=4, CASTLE_BQ=8;
 struct Move { int from=-1,to=-1,promo=0,flags=0; };
 struct Undo {
     int captured=0,capturedSquare=-1,castle=0,ep=-1,halfmove=0,fullmove=1;
-    int whiteKing=4,blackKing=116;
+    int whiteKing=-1,blackKing=-1;
 };
 struct Board {
     std::array<int,128> sq{};
@@ -38,7 +39,7 @@ int pieceFromChar(char c){
     const std::string names=" pnbrqk";
     size_t p=names.find(char(std::tolower(static_cast<unsigned char>(c))));
     if(p==std::string::npos||p==0)return 0;
-    return std::islower(static_cast<unsigned char>(c))?int(p):-int(p);
+    return std::isupper(static_cast<unsigned char>(c))?int(p):-int(p);
 }
 bool parseFen(const char* input,Board& b){
     if(!input)return false;
@@ -71,7 +72,7 @@ bool attacked(const Board& b,int sq,int by){
         int d=QUEEN_OFF[i],from=sq+d,steps=1;
         while(valid(from)){
             int p=b.sq[from];
-            if(p){if(sign(p)==by){int t=absPiece(p);if(t==QUEEN||(steps==1&&(i<4?t==BISHOP:t==ROOK)))return true;}break;}
+            if(p){if(sign(p)==by){int t=absPiece(p);if(t==QUEEN||(steps==1&&((d==-17||d==-15||d==15||d==17)?t==BISHOP:t==ROOK)))return true;}break;}
             from+=d;++steps;
         }
     }
@@ -156,16 +157,15 @@ struct Entry{uint64_t key=0;int depth=-1,score=0,flag=0;Move move{};};
 std::array<Entry,1<<18> tt;
 uint64_t nodes=0;
 int scoreTT(int s,int ply){if(s>MATE-MAX_PLY)return s-ply;if(s< -MATE+MAX_PLY)return s+ply;return s;}
-void order(std::vector<Move>& moves,const Move& ttMove){
-    std::stable_sort(moves.begin(),moves.end(),[&](const Move&a,const Move&b){
-        auto value=[&](const Move&m){if(m.from==ttMove.from&&m.to==ttMove.to&&m.promo==ttMove.promo)return 1000000;int victim=absPiece(0);(void)victim;return (m.promo?800000+VALUE[m.promo]:0);};
-        return value(a)>value(b);
+void order(const Board& b,std::vector<Move>& moves,const Move& ttMove){
+    std::stable_sort(moves.begin(),moves.end(),[&](const Move&a,const Move&bmove){
+        auto value=[&](const Move&m){if(m.from==ttMove.from&&m.to==ttMove.to&&m.promo==ttMove.promo)return 1000000;int victim=(m.flags&2)?PAWN:absPiece(b.sq[m.to]);int attacker=absPiece(b.sq[m.from]);return (m.promo?800000+VALUE[m.promo]:0)+(victim?100000+VALUE[victim]*10-VALUE[attacker]:0);};
+        return value(a)>value(bmove);
     });
 }
 int qsearch(Board& b,int alpha,int beta,int ply){
-    ++nodes;int stand=evaluate(b);if(stand>=beta)return beta;if(stand>alpha)alpha=stand;
-    if(ply>=MAX_PLY)return alpha;
-    std::vector<Move> moves;legalMoves(b,moves,true);
+    ++nodes;if(ply>=MAX_PLY)return evaluate(b);bool check=inCheck(b,b.side);int stand=check?-INF:evaluate(b);if(!check){if(stand>=beta)return beta;if(stand>alpha)alpha=stand;}
+    std::vector<Move> moves;legalMoves(b,moves,!check);if(check&&moves.empty())return -MATE+ply;
     for(const Move&m:moves){Undo u=makeMove(b,m);int score=-qsearch(b,-beta,-alpha,ply+1);undoMove(b,m,u);if(score>=beta)return beta;if(score>alpha)alpha=score;}
     return alpha;
 }
@@ -176,7 +176,7 @@ int negamax(Board& b,int depth,int alpha,int beta,int ply){
     int original=alpha;if(e.key==key&&e.depth>=depth){int s=scoreTT(e.score,ply);if(e.flag==0)return s;if(e.flag==1&&s>=beta)return s;if(e.flag==2&&s<=alpha)return s;}
     std::vector<Move> moves;legalMoves(b,moves,false);
     if(moves.empty())return inCheck(b,b.side)?-MATE+ply:0;
-    order(moves,ttMove);int best=-INF;Move bestMove=moves[0];int index=0;
+    order(b,moves,ttMove);int best=-INF;Move bestMove=moves[0];int index=0;
     for(const Move&m:moves){Undo u=makeMove(b,m);int score;
         if(index++==0)score=-negamax(b,depth-1,-beta,-alpha,ply+1);
         else {score=-negamax(b,depth-1,-alpha-1,-alpha,ply+1);if(score>alpha&&score<beta)score=-negamax(b,depth-1,-beta,-alpha,ply+1);}
@@ -200,7 +200,7 @@ extern "C" int marlin_cpp_search(const char* fen,int maxDepth,char* output,int o
     nodes=0;Move best=moves[0];int bestScore=0;int depthLimit=std::max(1,std::min(12,maxDepth));
     for(int depth=1;depth<=depthLimit;depth++){
         int alpha=-INF,beta=INF,iterationScore=-INF;Move iterationBest=best;
-        order(moves,best);
+        order(b,moves,best);
         for(const Move&m:moves){Undo u=makeMove(b,m);int score=-negamax(b,depth-1,-beta,-alpha,1);undoMove(b,m,u);if(score>iterationScore){iterationScore=score;iterationBest=m;}if(score>alpha)alpha=score;}
         best=iterationBest;bestScore=iterationScore;
     }
