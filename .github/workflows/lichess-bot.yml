@@ -2,6 +2,9 @@ name: MARLIN V9 Lichess Bot
 
 on:
   workflow_dispatch:
+  schedule:
+    # Restart shortly after the 350-minute GitHub Actions job timeout.
+    - cron: "0 */6 * * *"
 
 permissions:
   contents: read
