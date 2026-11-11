@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { selectOpeningMove as selectCuratedFallback } from "./opening-policy-v7.js";
 
 const BOOK_URL = new URL("./nnue/marlin-v9-opening-book.json", import.meta.url);
@@ -10,8 +9,15 @@ export async function initialiseV9OpeningBook() {
   if (!loading) {
     loading = (async () => {
       try {
-        const source = await readFile(BOOK_URL, "utf8");
-        const candidate = JSON.parse(source);
+        let candidate;
+        if (typeof process !== "undefined" && process.versions?.node) {
+          const { readFile } = await import("node:fs/promises");
+          candidate = JSON.parse(await readFile(BOOK_URL, "utf8"));
+        } else {
+          const response = await fetch(BOOK_URL, { cache: "no-cache" });
+          if (!response.ok) throw new Error("Opening book HTTP " + response.status);
+          candidate = await response.json();
+        }
         if (candidate.format !== "MARLIN_OPENING_BOOK_V1" ||
             candidate.model !== "MARLIN V9" ||
             !candidate.positions || typeof candidate.positions !== "object") {
