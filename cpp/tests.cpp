@@ -2,7 +2,16 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <cstdlib>
 #include <iostream>
+
+#undef assert
+#define assert(expression) do { \
+    if (!(expression)) { \
+        std::cerr << "Assertion failed: " #expression << " at line " << __LINE__ << "\\n"; \
+        std::exit(EXIT_FAILURE); \
+    } \
+} while (false)
 
 int main() {
     constexpr std::uint64_t e4 = 1ULL << 28;
