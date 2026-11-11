@@ -15,10 +15,13 @@ for (const line of v9CuratedOpeningLines()) {
   }
 }
 
-// White defaults to 1.e4 while retaining a Queen's Gambit alternative.
+// The curated fallback offers 1.e4 and 1.d4, but the first move itself must
+// come from V9 search so 1.Nc3 remains possible when V9 evaluates it best.
 const start = new Chess();
 assert.equal(selectV9CuratedOpeningMove(start, () => 0).san, "e4");
 assert.equal(selectV9CuratedOpeningMove(start, () => 0.99).san, "d4");
+assert.equal(selectV9OpeningMove(start), null,
+  "the starting position must be searched rather than forced by an opening book");
 
 // Against 1.e4, Black's book offers the Caro-Kann and Sicilian, not 1...e5.
 const afterE4 = new Chess();
@@ -37,18 +40,12 @@ const afterD4 = new Chess();
 afterD4.move("d4");
 assert.equal(selectV9CuratedOpeningMove(afterD4, () => 0).san, "d5");
 
-// Do not recommend continuing the Van Geet.
+// A game that begins 1.Nc3 leaves the curated repertoire and goes to
+// normal V9 search for the reply. The first move was not forbidden.
 const vanGeet = new Chess();
+assert.ok(vanGeet.moves().includes("Nc3"));
 vanGeet.move("Nc3");
 assert.equal(selectV9CuratedOpeningMove(vanGeet, () => 0), null);
 assert.equal(selectV9OpeningMove(vanGeet), null);
-
-// The book selector also has a hard initial-position ban, independent of
-// what a future GM dataset might contain.
-const noVanGeet = new Chess();
-const firstChoice = selectV9OpeningMove(noVanGeet);
-assert.ok(firstChoice);
-assert.notEqual(firstChoice.from + firstChoice.to, "b1c3");
-assert.ok(["e4", "d4"].includes(firstChoice.san));
 
 console.log("MARLIN V9 classical opening repertoire tests passed.");
