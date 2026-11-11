@@ -546,6 +546,8 @@ function getArenaMove(version, depth) {
         if (progressEl) {
           if (stage === "initialising") {
             progressEl.textContent = engineName + " initialising…";
+          } else if (stage === "thinking") {
+            progressEl.textContent = engineName + " calculating to depth " + depth + " in C++ WebAssembly…";
           } else if (stage === "checking-book") {
             progressEl.textContent = engineName + " checking opening book / tablebase…";
           } else if (stage === "depth-complete") {
