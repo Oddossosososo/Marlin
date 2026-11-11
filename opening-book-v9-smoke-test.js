@@ -43,4 +43,12 @@ vanGeet.move("Nc3");
 assert.equal(selectV9CuratedOpeningMove(vanGeet, () => 0), null);
 assert.equal(selectV9OpeningMove(vanGeet), null);
 
+// The book selector also has a hard initial-position ban, independent of
+// what a future GM dataset might contain.
+const noVanGeet = new Chess();
+const firstChoice = selectV9OpeningMove(noVanGeet);
+assert.ok(firstChoice);
+assert.notEqual(firstChoice.from + firstChoice.to, "b1c3");
+assert.ok(["e4", "d4"].includes(firstChoice.san));
+
 console.log("MARLIN V9 classical opening repertoire tests passed.");
