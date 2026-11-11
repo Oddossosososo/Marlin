@@ -1,0 +1,13 @@
+{
+  "name": "marlin-chess-engine",
+  "private": true,
+  "version": "0.9.0",
+  "type": "module",
+  "scripts": {
+    "lichess-bot": "node lichess-bot.js",
+    "test:lichess-v9": "node lichess-v9-smoke-test.js"
+  },
+  "dependencies": {
+    "chess.js": "^1.4.0"
+  }
+}
