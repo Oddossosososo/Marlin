@@ -130,7 +130,7 @@ export async function searchV9(fen, requestedDepth = 4, onProgress = () => {}) {
     wasm.stringToUTF8(fen, fenPtr, fenSize);
     wasm._marlin_cpp_search(fenPtr, depth, outPtr, 512);
     const output = wasm.UTF8ToString(outPtr);
-    const match = output.match(/^bestmove ([a-h][1-8][a-h][1-8][qrbn]?) score (-?\\d+) depth (\\d+) nodes (\\d+)$/);
+    const match = output.match(/^bestmove ([a-h][1-8][a-h][1-8][qrbn]?) score (-?\d+) depth (\d+) nodes (\d+)$/);
 
     if (!match) {
       throw new Error("MARLIN V9 returned an invalid search response: " + output);
