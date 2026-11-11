@@ -45,7 +45,7 @@ jobs:
           import createMarlinModule from "./marlin-wasm.js";
           const wasm = await createMarlinModule();
           const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-          const fenBytes = new TextEncoder().encode(fen + "\\0");
+          const fenBytes = new TextEncoder().encode(fen + "\0");
           const fenPtr = wasm._malloc(fenBytes.length);
           const outPtr = wasm._malloc(512);
           try {
@@ -56,7 +56,7 @@ jobs:
             if (!/^bestmove [a-h][1-8][a-h][1-8][qrbn]? score /.test(result)) {
               throw new Error("Unexpected C++ WASM response: " + result);
             }
-            if (!/\\\\bnodes [1-9][0-9]*/.test(result)) {
+            if (!/\bnodes [1-9][0-9]*/.test(result)) {
               throw new Error("C++ WASM did not report searched nodes: " + result);
             }
             console.log("C++ WASM smoke test passed:", result);
