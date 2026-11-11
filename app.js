@@ -32,7 +32,7 @@ function updatePlayerIdentity() {
   const whitePlayer = document.querySelector("#white-player");
   const inArena = !arenaPanel.hidden;
   const v7IsBlack = lastArenaV7Color === "b";
-  const blackName = inArena ? (v7IsBlack ? "MARLIN V7" : "MARLIN V8") : "MARLIN V7";
+  const blackName = inArena ? (v7IsBlack ? "MARLIN V7" : "MARLIN V8") : (engineStatus.includes("MARLIN V7") ? "MARLIN V7" : "MARLIN C++");
   const whiteName = inArena ? (v7IsBlack ? "MARLIN V8" : "MARLIN V7") : "YOU";
   const whiteIsHuman = !inArena;
 
@@ -160,7 +160,7 @@ function getEngineMove(depth) {
           const depth = Number(event.data.depth || 0);
           const nodes = Number(event.data.nodes || 0).toLocaleString();
           const nps = Number(event.data.nps || 0).toLocaleString();
-          thinkingEl.textContent = "MARLIN V7 · DEPTH " + depth + " · " + nodes + " NODES · " + nps + " NPS";
+          thinkingEl.textContent = (event.data.engine === "v7" ? "MARLIN V7" : "MARLIN C++") + " · DEPTH " + depth + " · " + nodes + " NODES · " + nps + " NPS";
           return;
         }
         const pending = pendingEngineRequest;
@@ -206,7 +206,8 @@ async function makeEngineMove() {
     );
     if (!legalMove) throw new Error("MARLIN returned a move that is not legal in this position.");
 
-    if (candidate.source === "syzygy-7-man") engineStatus = "MARLIN V7 · SYZYGY 6/7-MAN";
+    if (candidate.source === "cpp-wasm") engineStatus = "MARLIN C++ · WEBASSEMBLY · " + Number(result.nodes || 0).toLocaleString() + " NODES · " + Number(result.nps || 0).toLocaleString() + " NPS";
+    else if (candidate.source === "syzygy-7-man") engineStatus = "MARLIN V7 · SYZYGY 6/7-MAN";
     else if (candidate.source === "master-book") engineStatus = "MARLIN V7 · MASTER OPENING BOOK";
     else if (candidate.source === "curated-book" || candidate.source === "opening-book") engineStatus = "MARLIN V7 · CURATED OPENING BOOK";
     else if (candidate.source === "search-fallback") engineStatus = "MARLIN V7 · SEARCH FALLBACK";

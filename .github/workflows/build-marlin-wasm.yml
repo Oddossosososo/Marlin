@@ -1,0 +1,82 @@
+name: Build MARLIN C++ WebAssembly
+
+on:
+  push:
+    branches: [main, migration/cpp-engine]
+    paths:
+      - "cpp/**"
+      - "engine-worker.js"
+      - ".github/workflows/build-marlin-wasm.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "cpp/**"
+      - "engine-worker.js"
+      - ".github/workflows/build-marlin-wasm.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+      - uses: mymindstorm/setup-emsdk@v14
+      - name: Compile optimized browser engine
+        run: |
+          em++ cpp/attacks.cpp cpp/search.cpp \
+            -std=c++17 -O3 -flto \
+            -s MODULARIZE=1 \
+            -s EXPORT_ES6=1 \
+            -s ENVIRONMENT=web,worker,node \
+            -s ALLOW_MEMORY_GROWTH=1 \
+            -s FILESYSTEM=0 \
+            -s EXPORTED_FUNCTIONS='["_marlin_cpp_search","_marlin_cpp_perft","_malloc","_free"]' \
+            -s EXPORTED_RUNTIME_METHODS='["UTF8ToString","stringToUTF8"]' \
+            -o marlin-wasm.js
+      - name: Smoke-test the compiled WebAssembly search
+        run: |
+          node --input-type=module <<'NODE'
+          import createMarlinModule from "./marlin-wasm.js";
+          const wasm = await createMarlinModule();
+          const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+          const fenSize = new TextEncoder().encode(fen).length + 1;
+          const fenPtr = wasm._malloc(fenSize);
+          const outPtr = wasm._malloc(512);
+          try {
+            wasm.stringToUTF8(fen, fenPtr, fenSize);
+            wasm._marlin_cpp_search(fenPtr, 3, outPtr, 512);
+            const result = wasm.UTF8ToString(outPtr);
+            if (!/^bestmove [a-h][1-8][a-h][1-8][qrbn]? score /.test(result)) {
+              throw new Error("Unexpected C++ WASM response: " + result);
+            }
+            if (!/\bnodes [1-9][0-9]*/.test(result)) {
+              throw new Error("C++ WASM did not report searched nodes: " + result);
+            }
+            console.log("C++ WASM smoke test passed:", result);
+          } finally {
+            wasm._free(fenPtr);
+            wasm._free(outPtr);
+          }
+          NODE
+      - name: Commit generated WebAssembly runtime
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add marlin-wasm.js marlin-wasm.wasm
+          if ! git diff --cached --quiet; then
+            git commit -m "Build optimized MARLIN C++ WebAssembly engine"
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              TARGET_REF="${{ github.event.pull_request.head.ref }}"
+            else
+              TARGET_REF="${{ github.ref_name }}"
+            fi
+            git fetch origin "$TARGET_REF"
+            git rebase "origin/$TARGET_REF"
+            git push origin "HEAD:$TARGET_REF"
+          fi

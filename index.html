@@ -14,9 +14,10 @@
       <div class="side-label">ENGINE</div>
       <button class="side-link active" id="play-nav">♟ <span>Play</span></button>
       <button class="side-link" id="arena-nav">⚔ <span>Arena</span></button>
+      <a class="side-link" href="./benchmark.html">⚡ <span>Benchmark</span></a>
       <div class="side-foot"><img class="sidebar-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN</span><small>ENGINE LAB</small></div>
     </nav>
-    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.8 · MARLIN V7 SEARCH</span></header>
+    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.9 · C++ SEARCH / V7 FALLBACK</span></header>
     <section class="layout">
       <div class="board-wrap">
         <div class="player-identity engine-player" id="black-player">
@@ -38,12 +39,12 @@
           <select id="depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Normal</option><option value="3">Depth 3 · Standard</option><option value="4">Depth 4 · Standard</option><option value="5">Depth 5 · Stronger</option><option value="6" selected>Depth 6 · Deep</option><option value="7">Depth 7 · Very deep</option><option value="8">Depth 8 · Very deep</option><option value="9">Depth 9 · Very deep</option><option value="10">Depth 10 · Very deep</option><option value="11">Depth 11 · Extreme</option><option value="12">Depth 12 · Extreme</option><option value="13">Depth 13 · Extreme</option><option value="14">Depth 14 · Extreme</option><option value="15">Depth 15 · Extreme</option><option value="16">Depth 16 · Extreme</option><option value="17">Depth 17 · Experimental</option><option value="18">Depth 18 · Experimental</option><option value="19">Depth 19 · Experimental</option><option value="20">Depth 20 · Experimental</option><option value="21">Depth 21 · Experimental</option><option value="22">Depth 22 · Experimental</option></select>
           <button id="new-game" class="primary">New game</button>
           <button id="stop-search" disabled>Stop search</button>
-          <p class="search-depth-hint">Depth is measured in plies. Depth 22 is experimental and may take a long time; use Stop search to cancel.</p>
+          <p class="search-depth-hint">Depth is measured in plies. The current C++ WebAssembly search is capped at 12 plies; V7 is the fallback if WebAssembly is unavailable.</p>
           <button id="undo">Undo last turn</button>
         </div>
         <div class="thinking" id="thinking">MARLIN READY</div>
         <div class="moves"><div class="section-title">MOVE HISTORY</div><ol id="history"><li class="empty">Moves will appear here.</li></ol></div>
-        <p class="note">You play White. Marlin V7 plays Black. Captures use normal chess material values, and the engine evaluates whether exchanges are safe before choosing them.</p>
+        <p class="note">You play White. MARLIN C++ plays Black when WebAssembly is available; V7 is the fallback. Captures use normal chess material values, and the engine evaluates whether exchanges are safe before choosing them.</p>
       </aside>
     </section>
     <section class="arena-panel" id="arena-panel" hidden>

@@ -1,0 +1,87 @@
+name: MARLIN C++ depth benchmark (fixed)
+
+on:
+  push:
+    branches: [migration/cpp-engine]
+    paths:
+      - ".github/workflows/benchmark-cpp-fixed.yml"
+      - "cpp/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mymindstorm/setup-emsdk@v14
+      - name: Build optimized WebAssembly engine
+        run: |
+          em++ cpp/attacks.cpp cpp/search.cpp \
+            -std=c++17 -O3 -flto \
+            -s MODULARIZE=1 \
+            -s EXPORT_ES6=1 \
+            -s ENVIRONMENT=node \
+            -s ALLOW_MEMORY_GROWTH=1 \
+            -s FILESYSTEM=0 \
+            -s EXPORTED_FUNCTIONS='["_marlin_cpp_search","_malloc","_free"]' \
+            -s EXPORTED_RUNTIME_METHODS='["UTF8ToString","stringToUTF8"]' \
+            -o marlin-bench.js
+      - name: Measure fixed-depth search throughput
+        run: |
+          node --input-type=module <<'NODE' | tee benchmark.txt
+          import createMarlinModule from "./marlin-bench.js";
+          import { performance } from "node:perf_hooks";
+          const wasm = await createMarlinModule();
+          const positions = [
+            ["start", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"],
+            ["kiwipete", "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"],
+            ["middlegame", "r2q1rk1/pp2bppp/2n1pn2/2pp4/3P4/2P1PN2/PP1NBPPP/R2Q1RK1 w - - 0 10"],
+            ["endgame", "8/5pk1/6p1/3P4/2P5/5K2/8/8 w - - 0 1"]
+          ];
+          const depth = 6;
+          function search(fen) {
+            const size = new TextEncoder().encode(fen).length + 1;
+            const fp = wasm._malloc(size), op = wasm._malloc(512);
+            try {
+              wasm.stringToUTF8(fen, fp, size);
+              const t0 = performance.now();
+              wasm._marlin_cpp_search(fp, depth, op, 512);
+              const ms = performance.now() - t0;
+              const output = wasm.UTF8ToString(op);
+              const nodes = Number(output.split("nodes ")[1] || 0);
+              const reportedDepth = Number((output.split("depth ")[1] || "").split(" ")[0] || 0);
+              if (!nodes || reportedDepth !== depth) throw new Error("Invalid benchmark result: " + output);
+              return { ms, nodes, nps: nodes * 1000 / ms, dps: depth * 1000 / ms };
+            } finally { wasm._free(fp); wasm._free(op); }
+          }
+          search(positions[0][1]);
+          const all = [];
+          for (const [name, fen] of positions) {
+            const samples = [];
+            for (let i = 0; i < 3; i++) samples.push(search(fen));
+            const row = {
+              position: name, depth,
+              avgMs: +(samples.reduce((a, x) => a + x.ms, 0) / 3).toFixed(2),
+              avgNodes: Math.round(samples.reduce((a, x) => a + x.nodes, 0) / 3),
+              avgNps: Math.round(samples.reduce((a, x) => a + x.nps, 0) / 3),
+              avgDps: +(samples.reduce((a, x) => a + x.dps, 0) / 3).toFixed(2)
+            };
+            all.push(row);
+            console.log(JSON.stringify(row));
+          }
+          const meanNps = Math.round(all.reduce((a, x) => a + x.avgNps, 0) / all.length);
+          const meanDps = +(all.reduce((a, x) => a + x.avgDps, 0) / all.length).toFixed(2);
+          console.log("SUMMARY " + JSON.stringify({ depth, positions: all.length, meanNps, meanDps }));
+          NODE
+          {
+            echo "## MARLIN C++ WebAssembly benchmark"
+            echo
+            echo "Fixed depth: 6 plies; 4 positions; 3 runs per position; optimized Emscripten build."
+            echo
+            echo ' ```text '
+            cat benchmark.txt
+            echo ' ``` '
+          } >> "$GITHUB_STEP_SUMMARY"
