@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <cstring>
 
 int main() {
     constexpr std::uint64_t e4 = 1ULL << 28;
