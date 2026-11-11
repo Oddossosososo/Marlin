@@ -14,7 +14,7 @@ on:
         description: "Dataset attribution and licence notice"
         required: true
         type: string
-        default: "Operator-supplied human master PGNs; verify source licence and preserve required attribution."
+        default: "Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games; Stockfish labels."
       min_elo:
         description: "Minimum Elo for both players (master titles also qualify; BOT tags are always excluded)"
         required: true
@@ -102,7 +102,7 @@ jobs:
             # Official Lichess broadcasts are CC BY-SA 4.0. The index list is
             # newest-first and is refreshed as monthly tournament PGNs arrive.
             curl --fail --location --retry 3 https://database.lichess.org/broadcast/list.txt -o /tmp/lichess-broadcast-list.txt
-            ARCHIVE_URL="$(head -n 1 /tmp/lichess-broadcast-list.txt | tr -d '\\r')"
+            ARCHIVE_URL="$(head -n 1 /tmp/lichess-broadcast-list.txt)"
             case "$ARCHIVE_URL" in
               https://database.lichess.org/broadcast/*.pgn.zst) ;;
               *) echo "Unexpected Lichess broadcast archive URL."; exit 1 ;;
@@ -164,7 +164,7 @@ jobs:
       - name: Train MARLIN V9 NNUE
         env:
           EPOCHS: ${{ inputs.epochs || '40' }}
-          DATA_ATTRIBUTION: ${{ inputs.data_attribution || 'Operator-supplied human master PGNs; verify source licence.' }}
+          DATA_ATTRIBUTION: ${{ inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
         run: |
           python training/train_nnue_v7.py \
             --data training/data/marlin-v9-masters.jsonl \
