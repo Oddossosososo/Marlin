@@ -45,3 +45,15 @@ https://oddossosososo.github.io/Marlin/
 ## Version notes
 
 V8 is retained as the JavaScript comparison engine. Its search includes reverse-futility, futility and late-move pruning, check extensions, aspiration windows, a transposition table, and an NNUE-aware evaluation path. V9 is the newer C++ search challenger used by the Arena and speed benchmark.
+
+
+## Lichess bot
+
+The Lichess bot now uses MARLIN V9's C++ WebAssembly search through `marlin-v9.js`. The workflow is manually started from the `main` branch and runs a smoke test against legal chess positions before connecting to Lichess.
+
+Required repository settings:
+- Secret `LICHESS_TOKEN`: a Lichess bot-account API token with the permissions required by the bot API.
+- Optional variable `LICHESS_USERNAME`: account name used as a fallback when identifying the bot's colour.
+- Optional variable `MARLIN_DEPTH`: search depth from 1 to 12; defaults to 4 to keep move times practical.
+
+The bot accepts standard-chess challenges only. It does not start automatically on a code push; manually dispatch the **MARLIN V9 Lichess Bot** workflow on `main` after configuring the secret and variables. Keep the workflow run active while the bot is online.
