@@ -15,13 +15,12 @@ async function findCppMove(fen, requestedDepth) {
     });
   }
   const wasm = await cppModulePromise;
-  const fenBytes = new TextEncoder().encode(fen + "\0");
-  const fenPtr = wasm._malloc(fenBytes.length);
+  const fenSize = new TextEncoder().encode(fen).length + 1;
+  const fenPtr = wasm._malloc(fenSize);
   const outPtr = wasm._malloc(512);
   const started = performance.now();
   try {
-    wasm.HEAPU8.set(fenBytes, fenPtr);
-    wasm.HEAPU8.fill(0, outPtr, outPtr + 512);
+    wasm.stringToUTF8(fen, fenPtr, fenSize);
     const depth = Math.max(1, Math.min(12, Math.floor(Number(requestedDepth) || 6)));
     wasm._marlin_cpp_search(fenPtr, depth, outPtr, 512);
     const output = wasm.UTF8ToString(outPtr);
