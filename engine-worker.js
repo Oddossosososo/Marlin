@@ -1,6 +1,7 @@
 import { Chess } from "https://esm.sh/chess.js@1.4.0";
 import { findBestMove as findPolicyMove, initialiseV7 } from "./engine-v7-policy.js";
 import { findBestMove as findSearchMove } from "./engine-v7.js";
+import { initialiseV9OpeningBook, selectV9OpeningMove } from "./opening-book-v9.js";
 
 let cppModulePromise = null;
 
@@ -56,8 +57,12 @@ self.onmessage = async (event) => {
     let initialised = { nnue: false };
 
     try {
-      move = await findCppMove(positionFen, depth);
-      self.postMessage({
+      await initialiseV9OpeningBook();
+      move = selectV9OpeningMove(game) || await findCppMove(positionFen, depth);
+      if (move.source === "gm-opening-book" || move.source === "curated-opening-book") {
+        self.postMessage({ requestId, type: "progress", engine: "cpp", stage: "opening-book", depth: 0, nodes: 0 });
+      } else {
+        self.postMessage({
         requestId,
         type: "progress",
         engine: "cpp",
@@ -67,7 +72,8 @@ self.onmessage = async (event) => {
         nodes: move.nodes,
         nps: move.nps,
         elapsedMs: move.elapsedMs
-      });
+        });
+      }
     } catch (cppError) {
       console.warn("MARLIN C++ WebAssembly unavailable; using V7 fallback:", cppError);
       initialised = await initialiseV7();
