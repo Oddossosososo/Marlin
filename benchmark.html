@@ -26,12 +26,12 @@
 <body>
   <main class="bench-page">
     <div class="bench-top">
-      <div class="bench-title"><img src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><h1>MARLIN BENCHMARK</h1><p>V7 JAVASCRIPT vs C++ WEBASSEMBLY</p></div></div>
+      <div class="bench-title"><img src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><h1>MARLIN BENCHMARK</h1><p>V8 JAVASCRIPT vs V9 C++ WEBASSEMBLY</p></div></div>
       <a class="bench-back" href="./index.html">← Back to Marlin</a>
     </div>
     <section class="bench-card">
       <div class="section-title">CONTROLLED SPEED TEST</div>
-      <p class="bench-muted">Both engines run in this browser, on the same device, against the same FEN positions and depth. Run the test more than once for a steadier comparison.</p>
+      <p class="bench-muted">V8 JavaScript and V9 C++ WebAssembly run on this browser, on the same device, against identical FEN positions and depth. Run more than once for a steadier result.</p>
       <div class="bench-controls">
         <label for="bench-depth">SEARCH DEPTH
           <select id="bench-depth"><option value="3">Depth 3</option><option value="4">Depth 4</option><option value="5" selected>Depth 5</option><option value="6">Depth 6</option><option value="7">Depth 7</option><option value="8">Depth 8</option></select>
@@ -50,14 +50,14 @@
       <div class="section-title">POSITION RESULTS</div>
       <div style="overflow-x:auto">
         <table class="bench-table">
-          <thead><tr><th>POSITION</th><th>V7 TIME</th><th>C++ TIME</th><th>V7 NPS</th><th>C++ NPS</th><th>FASTER</th></tr></thead>
+          <thead><tr><th>POSITION</th><th>V8 TIME</th><th>V9 TIME</th><th>V8 NPS</th><th>V9 NPS</th><th>FASTER</th></tr></thead>
           <tbody id="bench-results"><tr><td colspan="6" class="bench-muted">No benchmark run yet.</td></tr></tbody>
         </table>
       </div>
     </section>
     <section class="bench-card">
       <div class="section-title">HOW TO READ THIS</div>
-      <p class="bench-note">Time is the main speed comparison: lower is faster. NPS means searched nodes per second, but node counts are not directly equivalent between different search algorithms. Both engines are asked to complete the same depth; their evaluation and pruning methods differ. This is a browser/device benchmark, not an Elo rating or a strength test. Results can vary with device load, browser, and thermal throttling.</p>
+      <p class="bench-note">Time is the main speed comparison: lower is faster. NPS means searched nodes per second, but node counts are not directly equivalent between different search algorithms. Both engines are asked to complete the same depth; their evaluation and pruning methods differ. This is a browser/device benchmark, not an Elo rating or a playing-strength test. Results can vary with device load, browser, and thermal throttling.</p>
     </section>
   </main>
   <script type="module" src="./benchmark.js"></script>

@@ -32,6 +32,8 @@ jobs:
             nnue-v7.js \
             engine-worker.js \
             arena-worker.js \
+            benchmark-worker.js \
+            benchmark.js \
             training/smoke-v8.mjs \
             app.js
           do

@@ -17,12 +17,12 @@
       <a class="side-link" href="./benchmark.html">⚡ <span>Benchmark</span></a>
       <div class="side-foot"><img class="sidebar-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN</span><small>ENGINE LAB</small></div>
     </nav>
-    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">v0.9 · C++ SEARCH / V7 FALLBACK</span></header>
+    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">V9 · C++ SEARCH ENGINE</span></header>
     <section class="layout">
       <div class="board-wrap">
         <div class="player-identity engine-player" id="black-player">
           <img class="player-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="MARLIN engine logo">
-          <span class="player-copy"><small>MARLIN ENGINE</small><strong>MARLIN V7</strong><em>CHESS ENGINE</em></span>
+          <span class="player-copy"><small>MARLIN ENGINE</small><strong>MARLIN V9</strong><em>CHESS ENGINE</em></span>
           <span class="player-badge">ENGINE</span>
         </div>
         <div class="board" id="board" role="grid" aria-label="Chess board"></div>
@@ -36,28 +36,28 @@
         <div class="status"><span class="dot"></span><div><small>GAME STATUS</small><strong id="status">Your move — White</strong></div></div>
         <div class="controls">
           <label for="depth">SEARCH DEPTH</label>
-          <select id="depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Normal</option><option value="3">Depth 3 · Standard</option><option value="4">Depth 4 · Standard</option><option value="5">Depth 5 · Stronger</option><option value="6" selected>Depth 6 · Deep</option><option value="7">Depth 7 · Very deep</option><option value="8">Depth 8 · Very deep</option><option value="9">Depth 9 · Very deep</option><option value="10">Depth 10 · Very deep</option><option value="11">Depth 11 · Extreme</option><option value="12">Depth 12 · Extreme</option><option value="13">Depth 13 · Extreme</option><option value="14">Depth 14 · Extreme</option><option value="15">Depth 15 · Extreme</option><option value="16">Depth 16 · Extreme</option><option value="17">Depth 17 · Experimental</option><option value="18">Depth 18 · Experimental</option><option value="19">Depth 19 · Experimental</option><option value="20">Depth 20 · Experimental</option><option value="21">Depth 21 · Experimental</option><option value="22">Depth 22 · Experimental</option></select>
+          <select id="depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Normal</option><option value="3">Depth 3 · Standard</option><option value="4">Depth 4 · Standard</option><option value="5">Depth 5 · Stronger</option><option value="6" selected>Depth 6 · Deep</option><option value="7">Depth 7 · Very deep</option><option value="8">Depth 8 · Very deep</option><option value="9">Depth 9 · Very deep</option><option value="10">Depth 10 · Very deep</option><option value="11">Depth 11 · Extreme</option><option value="12">Depth 12 · Extreme</option><option value="13">Depth 13 · Very deep</option><option value="14">Depth 14 · Very deep</option><option value="15">Depth 15 · Very deep</option><option value="16">Depth 16 · Very deep</option><option value="17">Depth 17 · Experimental</option><option value="18">Depth 18 · Experimental</option><option value="19">Depth 19 · Experimental</option><option value="20">Depth 20 · Experimental</option><option value="21">Depth 21 · Experimental</option><option value="22">Depth 22 · Experimental</option></select>
           <button id="new-game" class="primary">New game</button>
           <button id="stop-search" disabled>Stop search</button>
-          <p class="search-depth-hint">Depth is measured in plies. The current C++ WebAssembly search is capped at 12 plies; V7 is the fallback if WebAssembly is unavailable.</p>
+          <p class="search-depth-hint">Depth is measured in plies. The V9 C++ WebAssembly search is capped at 12 plies; the V7 search is used only if WebAssembly is unavailable.</p>
           <button id="undo">Undo last turn</button>
         </div>
         <div class="thinking" id="thinking">MARLIN READY</div>
         <div class="moves"><div class="section-title">MOVE HISTORY</div><ol id="history"><li class="empty">Moves will appear here.</li></ol></div>
-        <p class="note">You play White. MARLIN C++ plays Black when WebAssembly is available; V7 is the fallback. Captures use normal chess material values, and the engine evaluates whether exchanges are safe before choosing them.</p>
+        <p class="note">You play White. MARLIN V9 C++ plays Black when WebAssembly is available; V7 is the fallback. Captures use normal chess material values, and the engine evaluates whether exchanges are safe before choosing them.</p>
       </aside>
     </section>
     <section class="arena-panel" id="arena-panel" hidden>
       <div class="arena-board-slot" id="arena-board-slot"></div>
-      <div class="arena-heading"><div class="arena-brand"><img class="section-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><div class="section-title">ENGINE BATTLE</div><h2>V8 vs V7</h2><p class="pgn-help">V8 challenger versus the current V7 champion. Colours alternate every game.</p></div></div><span class="arena-live" id="arena-live">READY</span></div>
+      <div class="arena-heading"><div class="arena-brand"><img class="section-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><div class="section-title">ENGINE BATTLE</div><h2>V9 vs V8</h2><p class="pgn-help">V9 C++ search challenger versus the V8 JavaScript engine. Colours alternate every game.</p></div></div><span class="arena-live" id="arena-live">READY</span></div>
       <div class="arena-contenders">
-        <div class="contender newer"><small>CHALLENGER</small><strong>Marlin V8</strong><span>V8 · aspiration search / reverse futility / futility / late-move pruning / check extensions</span></div>
+        <div class="contender newer"><small>CHALLENGER</small><strong>Marlin V9</strong><span>V9 · C++ search / killer moves / history heuristic / transposition-table mate-score fix</span></div>
         <div class="versus">VS</div>
-        <div class="contender older"><small>CHAMPION</small><strong>Marlin V7</strong><span>V7 · current champion baseline</span></div>
+        <div class="contender older"><small>BASELINE</small><strong>Marlin V8</strong><span>V8 · JavaScript search / NNUE-aware evaluation / aspiration windows</span></div>
       </div>
       <div class="arena-controls">
         <label for="arena-depth">ARENA SEARCH DEPTH</label>
-        <select id="arena-depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Fast</option><option value="3">Depth 3 · Standard</option><option value="4">Depth 4 · Standard</option><option value="5">Depth 5 · Deep</option><option value="6" selected>Depth 6 · Deep</option><option value="7">Depth 7 · Very deep</option><option value="8">Depth 8 · Very deep</option><option value="9">Depth 9 · Very deep</option><option value="10">Depth 10 · Very deep</option><option value="11">Depth 11 · Extreme</option><option value="12">Depth 12 · Extreme</option><option value="13">Depth 13 · Extreme</option><option value="14">Depth 14 · Extreme</option><option value="15">Depth 15 · Extreme</option><option value="16">Depth 16 · Extreme</option><option value="17">Depth 17 · Experimental</option><option value="18">Depth 18 · Experimental</option><option value="19">Depth 19 · Experimental</option><option value="20">Depth 20 · Experimental</option><option value="21">Depth 21 · Experimental</option><option value="22">Depth 22 · Experimental</option></select>
+        <select id="arena-depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Fast</option><option value="3">Depth 3 · Standard</option><option value="4">Depth 4 · Standard</option><option value="5">Depth 5 · Deep</option><option value="6" selected>Depth 6 · Deep</option><option value="7">Depth 7 · Very deep</option><option value="8">Depth 8 · Very deep</option><option value="9">Depth 9 · Very deep</option><option value="10">Depth 10 · Very deep</option><option value="11">Depth 11 · Extreme</option><option value="12">Depth 12 · Extreme</option></select>
         <label for="arena-speed">MOVE SPEED</label>
         <select id="arena-speed"><option value="100">Fast</option><option value="450" selected>Normal</option><option value="1000">Slow</option></select>
         <button id="arena-start" class="primary">Start match</button>
@@ -67,11 +67,11 @@
       </div>
       <div class="arena-progress"><span id="arena-progress">No match played yet.</span><span id="arena-ply">0 plies</span><span id="arena-nodes">Search nodes: waiting</span></div>
       <div class="arena-results">
-        <div><small>V8 WINS</small><strong id="v8-wins">0</strong></div>
+        <div><small>V9 WINS</small><strong id="v9-wins">0</strong></div>
         <div><small>DRAWS</small><strong id="arena-draws">0</strong></div>
-        <div><small>V7 WINS</small><strong id="v7-wins">0</strong></div>
+        <div><small>V8 WINS</small><strong id="v8-wins">0</strong></div>
       </div>
-      <p class="pgn-help">V8 and V7 search to the selected depth with no fixed node-count cutoff. Both use the same NNUE weights for this first head-to-head; V8 has a separate search implementation.</p>
+      <p class="pgn-help">V9 runs the C++ WebAssembly search (maximum depth 12); V8 runs its JavaScript search and evaluation. Both are given the same position and requested depth. Their evaluators differ, so this compares the complete engine versions, not search speed alone.</p>
       <p class="pgn-help">This is a local self-play test, not official Fishtest or an Elo rating. One match is shown on the board.</p>
     </section>
     <section class="pgn-panel best-move-panel">
@@ -96,7 +96,7 @@
       <textarea id="pgn-output" rows="9" readonly spellcheck="false" placeholder="Your generated PGN will appear here."></textarea>
       <p id="pgn-status" class="pgn-help" aria-live="polite">Marlin will be tagged as GM in the selected colour.</p>
     </section>
-    <footer><img class="footer-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN V8 · CHALLENGER SEARCH / V7 CHAMPION</span></footer>
+    <footer><img class="footer-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN V9 · C++ SEARCH / V8 CHALLENGER</span></footer>
     </div>
   <script type="module" src="app.js"></script>
 </body>

@@ -2,9 +2,9 @@
 
 MARLIN is an experimental browser chess engine and training project.
 
-## Current engine: V7
+## Play engine: V9 C++ WebAssembly
 
-- V7 is the default engine for Play and PGN next-move analysis.
+- V9 C++ WebAssembly is the default engine for Play and PGN next-move analysis. The Play interface falls back to the V7 policy/search if WebAssembly cannot load. V9's C++ search currently supports up to 12 plies.
 - Iterative deepening, alpha-beta / negamax, transposition table, PVS, LMR and null-move pruning. Search stops at the selected depth; there is no fixed node-count cutoff. Depth 6 is the default in Play, Arena and PGN analysis. Arena reads the selected depth control and sends that same depth to both V7 and V6. Actual nodes, elapsed time and nodes per second (NPS) are reported. V7 uses numeric 53-bit Zobrist keys instead of BigInt, scores each move once before sorting, keeps a bounded transposition table and move-ordering history warm across turns, and reuses the previous root move as a principal-variation hint. V6's Arena search also reuses previous-move context instead of rebuilding the full game history at every node.
 - A dedicated handcrafted evaluation adds king safety, pawn structure, piece activity and mobility, bishop-pair value, rook files and endgame king activity. Structural weaknesses are evaluated as soft penalties; tactics can justify them.
 - Captures use standard chess material values. V7's handcrafted fallback explicitly scores the white-minus-black material balance, alongside positional terms. Static-exchange evaluation is used for capture ordering and quiescence pruning; it does not punish the capturing piece simply for taking.
@@ -20,9 +20,11 @@ The master-game positions shape the training distribution; Stockfish supplies co
 
 Place authorised PGNs in `training/gm-games/` or pass an HTTPS PGN / PGN.zst URL to the workflow. Check the source's licence and preserve any required attribution. See `training/README-v7.md`. Lichess data collections have different licences: its rated-game/evaluation exports are CC0, while official broadcast PGNs are CC BY-SA 4.0.
 
-## Arena
+## V9 vs V8 Arena
 
-Arena compares MARLIN V7 against V6 with alternating colours. Both search to the selected depth without a fixed node-count cutoff in Arena. The interface reports completed depth, elapsed time, actual nodes and NPS while each engine is thinking. Opening-book and tablebase moves can bypass normal search. Save and inspect many games before drawing strength conclusions.
+The Arena now pits MARLIN V9 (C++ WebAssembly search) against MARLIN V8 (JavaScript search), alternating colours between games. Both engines receive the same position and selected depth; V9 is capped at 12 plies by its current C++ search interface. The board verifies every returned move is legal, and the Arena records wins and draws and can export the game as PGN.
+
+V9 adds killer-move ordering, a bounded quiet-move history heuristic, staged move priorities, and corrected mate-score conversion for transposition-table storage and retrieval. V8 remains the comparison baseline. V9 is a challenger, not a proven stronger engine: use a multi-game match set and independent testing before making an Elo or strength claim.
 
 ## Legacy versions
 
@@ -40,8 +42,6 @@ https://oddossosososo.github.io/Marlin/
 - The board uses locally stored Cburnett SVG chess-piece artwork by Colin M. L. Burnett. See [PIECE-ATTRIBUTION.md](PIECE-ATTRIBUTION.md).
 
 
-## MARLIN V8 challenger
+## Version notes
 
-MARLIN V8 is available in the Engine Battle Arena against the V7 champion. The V8 search branch adds shallow reverse-futility, futility and late-move pruning plus check extensions and aspiration-window search. The V8 Arena alternates colours between games and reports wins and draws.
-
-V7 remains the default playing engine and champion. V8 currently shares the V7 NNUE weights and evaluation baseline; it is a search experiment, not yet a proven strength upgrade. Use the Arena and automated legal-move smoke tests before making any promotion or Elo claim.
+V8 is retained as the JavaScript comparison engine. Its search includes reverse-futility, futility and late-move pruning, check extensions, aspiration windows, a transposition table, and an NNUE-aware evaluation path. V9 is the newer C++ search challenger used by the Arena and speed benchmark.

@@ -39,7 +39,7 @@ runButton.addEventListener("click", () => {
     }
     if (data.type === "complete") {
       const rows = data.results;
-      resultsEl.innerHTML = rows.map(row => '<tr><td>' + row.position + '</td><td>' + row.v7.ms.toFixed(1) + ' ms</td><td>' + row.cpp.ms.toFixed(1) + ' ms</td><td>' + row.v7.nps.toLocaleString() + '</td><td>' + row.cpp.nps.toLocaleString() + '</td><td>' + row.faster + '</td></tr>').join("");
+      resultsEl.innerHTML = rows.map(row => '<tr><td>' + row.position + '</td><td>' + row.v8.ms.toFixed(1) + ' ms</td><td>' + row.v9.ms.toFixed(1) + ' ms</td><td>' + row.v8.nps.toLocaleString() + '</td><td>' + row.v9.nps.toLocaleString() + '</td><td>' + row.faster + '</td></tr>').join("");
       winnerEl.textContent = data.summary.winner;
       ratioEl.textContent = data.summary.ratio + "×";
       depthResultEl.textContent = "Depth " + depth;
