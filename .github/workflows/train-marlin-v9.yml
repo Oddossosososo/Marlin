@@ -175,17 +175,24 @@ jobs:
           from pathlib import Path
           model = json.loads(Path("nnue/marlin-v9.nnue.json").read_text(encoding="utf-8"))
           assert model["format"] == "MARLIN_NNUE_V1"
-          assert model["model"] == "MARLIN V9"
           assert model["architecture"] == "768x128x32x1"
           assert model["feature_encoding"] == "stm-relative-piece-square-v1"
           training = model["training"]
+          # The trainer stores the model name inside the training metadata.
+          assert training["model"] == "MARLIN V9"
           assert training["positions"] >= 1000
           assert training["sources"].get("human-master-pgn", 0) >= 1000
           weights = model["weights"]
           assert len(weights["fc1_w"]) == 768 and all(len(row) == 128 for row in weights["fc1_w"])
           assert len(weights["fc2_w"]) == 128 and all(len(row) == 32 for row in weights["fc2_w"])
           assert len(weights["out_w"]) == 32
+          assert len(weights["fc1_b"]) == 128
+          assert len(weights["fc2_b"]) == 32
+          assert math.isfinite(weights["out_b"])
           assert all(math.isfinite(v) for row in weights["fc1_w"] for v in row)
+          assert all(math.isfinite(v) for row in weights["fc2_w"] for v in row)
+          assert all(math.isfinite(v) for v in weights["out_w"])
+          assert all(math.isfinite(v) for v in weights["fc1_b"] + weights["fc2_b"])
           book = json.loads(Path("nnue/marlin-v9-opening-book.json").read_text(encoding="utf-8"))
           assert book["format"] == "MARLIN_OPENING_BOOK_V1"
           assert book["model"] == "MARLIN V9"
