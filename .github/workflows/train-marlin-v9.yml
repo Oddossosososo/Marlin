@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/train-marlin-v9.yml"
       - "training/generate_gm_dataset.py"
       - "training/generate_opening_book.py"
       - "training/train_nnue_v7.py"
@@ -27,17 +26,17 @@ on:
         description: "Supplementary Stockfish teacher games"
         required: true
         type: string
-        default: "300"
+        default: "150"
       depth:
         description: "Stockfish teacher depth"
         required: true
         type: string
-        default: "12"
+        default: "10"
       epochs:
         description: "NNUE training epochs"
         required: true
         type: string
-        default: "40"
+        default: "25"
 
 permissions:
   contents: write
