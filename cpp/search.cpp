@@ -201,7 +201,7 @@ int evaluateNnue(const Board& b){
 // does not defend it. The penalty is smaller when the owner is to move,
 // because it still has a chance to save the piece.
 int evaluateTacticalSafety(const Board& b){
-    int penalty=0;
+    int whiteScore=0;
     for(int s=0;s<128;s++){
         if(!valid(s)){s+=7;continue;}
         const int piece=b.sq[s];
@@ -211,9 +211,10 @@ int evaluateTacticalSafety(const Board& b){
         const int owner=sign(piece);
         if(!attacked(b,s,-owner)||attacked(b,s,owner))continue;
         const int urgency=(owner==b.side)?18:38;
-        penalty+=VALUE[type]*urgency/100;
+        const int loss=VALUE[type]*urgency/100;
+        whiteScore+=(owner>0)?-loss:loss;
     }
-    return b.side>0?-penalty:penalty;
+    return b.side*whiteScore;
 }
 
 int evaluate(const Board& b){
