@@ -314,7 +314,9 @@ int negamax(Board& b,int depth,int alpha,int beta,int ply,bool allowNull=true){
             break;
         }
     }
-    e.key=key;e.depth=depth;e.score=scoreToTT(best,ply);e.flag=best<=original?2:best>=beta?1:0;e.move=bestMove;return best;
+    // Prefer deeper entries when a different position collides in the direct-mapped table.
+    // Same-position entries may still be refreshed by an equal/deeper search.
+    if(e.key!=key||depth>=e.depth){e.key=key;e.depth=depth;e.score=scoreToTT(best,ply);e.flag=best<=original?2:best>=beta?1:0;e.move=bestMove;}return best;
 }
 uint64_t perft(Board& b,int depth){
     if(depth==0)return 1;std::vector<Move> moves;legalMoves(b,moves,false);uint64_t total=0;
@@ -361,13 +363,54 @@ extern "C" int marlin_cpp_search(const char* fen,int maxDepth,char* output,int o
     // The root loop searches moves directly instead of going through
     // negamax(), so explicitly extend a root position that begins in check.
     const int rootCheckExtension=inCheck(b,b.side)?1:0;
+    int completedDepth=0;
     for(int depth=1;depth<=depthLimit;depth++){
-        int alpha=-INF,beta=INF,iterationScore=-INF;Move iterationBest=best;
         order(b,moves,best,0);
         const int rootChildDepth=depth-1+rootCheckExtension;
-        for(const Move&m:moves){Undo u=makeMove(b,m);int score=-negamax(b,rootChildDepth,-beta,-alpha,1);undoMove(b,m,u);if(score>iterationScore){iterationScore=score;iterationBest=m;}if(score>alpha)alpha=score;}
-        best=iterationBest;bestScore=iterationScore;
+        // Aspiration windows centre the next iteration on the previous score.
+        // A failed-low/high search is widened and repeated before committing.
+        int window=depth>1?48:INF;
+        int alpha=depth>1?std::max(-INF,bestScore-window):-INF;
+        int beta=depth>1?std::min(INF,bestScore+window):INF;
+        int iterationScore=-INF;Move iterationBest=best;
+        while(true){
+            int localAlpha=alpha;
+            iterationScore=-INF;iterationBest=best;
+            for(size_t index=0;index<moves.size();index++){
+                const Move& m=moves[index];
+                Undo u=makeMove(b,m);
+                int score;
+                if(index==0){
+                    score=-negamax(b,rootChildDepth,-beta,-localAlpha,1);
+                }else{
+                    // Principal-variation search: scout later moves with a
+                    // null window, then re-search only when they beat alpha.
+                    score=-negamax(b,rootChildDepth,-localAlpha-1,-localAlpha,1);
+                    if(score>localAlpha&&score<beta)
+                        score=-negamax(b,rootChildDepth,-beta,-localAlpha,1);
+                }
+                undoMove(b,m,u);
+                if(score>iterationScore){iterationScore=score;iterationBest=m;}
+                if(score>localAlpha)localAlpha=score;
+                if(localAlpha>=beta)break;
+            }
+            if(iterationScore<=alpha&&alpha>-INF){
+                window=std::min(INF,window*2);
+                alpha=std::max(-INF,bestScore-window);
+                beta=std::min(INF,bestScore+window);
+                continue;
+            }
+            if(iterationScore>=beta&&beta<INF){
+                window=std::min(INF,window*2);
+                alpha=std::max(-INF,bestScore-window);
+                beta=std::min(INF,bestScore+window);
+                continue;
+            }
+            break;
+        }
+        // Only publish a root move after a complete aspiration/PVS iteration.
+        best=iterationBest;bestScore=iterationScore;completedDepth=depth;
     }
-    std::string result="bestmove "+uci(best)+" score "+std::to_string(bestScore)+" depth "+std::to_string(depthLimit)+" nodes "+std::to_string(nodes);
+    std::string result="bestmove "+uci(best)+" score "+std::to_string(bestScore)+" depth "+std::to_string(completedDepth)+" nodes "+std::to_string(nodes);
     std::strncpy(output,result.c_str(),outputSize-1);output[outputSize-1]=0;return bestScore;
 }
