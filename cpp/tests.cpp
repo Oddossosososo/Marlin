@@ -71,6 +71,16 @@ int main() {
     std::cout << "MARLIN French check-evasion regression: "
               << checkResult << "\n";
 
+    // Evaluation regression checks run before NNUE is installed, so they
+    // exercise the handcrafted fallback used when V9 weights are unavailable.
+    CHECK(marlin_cpp_evaluate_fen(start) == 8);
+    const char* whiteQueenUp =
+        "4k3/8/8/8/8/8/8/3QK3 w - - 0 1";
+    const char* whiteQueenUpBlackToMove =
+        "4k3/8/8/8/8/8/8/3QK3 b - - 0 1";
+    CHECK(marlin_cpp_evaluate_fen(whiteQueenUp) > 500);
+    CHECK(marlin_cpp_evaluate_fen(whiteQueenUpBlackToMove) < -500);
+
     // Verify that V9 accepts trained NNUE weights and evaluates with the
     // same side-to-move-relative output scale as the Python trainer.
     std::vector<float> fc1W(768 * 128, 0.0f);
