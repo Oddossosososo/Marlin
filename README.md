@@ -30,6 +30,14 @@ Lichess official broadcast PGNs are released under CC BY-SA 4.0. The trained fil
 
 **Current model status:** the checked-in opening-book file is initially empty, and the V9 NNUE is not considered active until the first training run publishes `nnue/marlin-v9.nnue.json`. Until then V9 uses its handcrafted evaluation and curated opening fallback. Training loss or GM-game exposure alone does not establish GM playing strength; use paired engine matches to measure it.
 
+## MARLIN V10 continuous-learning foundation
+
+The V10 learning-analysis workflow (`.github/workflows/marlin-v10-learning.yml`) runs daily and can also be started manually. It downloads up to 50 recent public games for the configured Lichess bot username (default: `MarlinChessBot`), analyses every played move with Stockfish, classifies inaccuracies (50+ cp), mistakes (100+ cp), and blunders (200+ cp), and exports a JSON report plus Stockfish-labelled FEN positions as downloadable workflow artifacts.
+
+For private or locally supplied games, place authorised standard-chess PGNs in `training/marlin-games/` and run the workflow with the Lichess username input left blank. The reusable analyser is `training/analyze_marlin_games.py`; its helper tests are in `training/test_analyze_marlin_games.py`.
+
+**Safety gate:** this first V10 stage collects and labels experience; it does not silently alter the live engine or overwrite V9 NNUE weights. A later training run must use held-out game-level validation and paired colour-swapped matches against the current champion before any candidate is promoted. More games alone do not guarantee stronger play.
+
 ## V9 vs V8 Arena
 
 The Arena now pits MARLIN V9 (C++ WebAssembly search) against MARLIN V8 (JavaScript search), alternating colours between games. Both engines receive the same position and selected depth; V9 is capped at 12 plies by its current C++ search interface. The board verifies every returned move is legal, and the Arena records wins and draws and can export the game as PGN.

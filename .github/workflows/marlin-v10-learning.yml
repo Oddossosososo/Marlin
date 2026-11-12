@@ -1,0 +1,82 @@
+name: MARLIN V10 game learning analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      lichess_username:
+        description: "Public Lichess bot username (leave blank to analyse committed PGNs)"
+        required: false
+        type: string
+        default: "MarlinChessBot"
+      max_games:
+        description: "Maximum recent games to analyse"
+        required: true
+        type: number
+        default: 50
+      depth:
+        description: "Stockfish analysis depth"
+        required: true
+        type: number
+        default: 10
+  schedule:
+    - cron: "30 5 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marlin-v10-learning-analysis
+  cancel-in-progress: false
+
+jobs:
+  analyse:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install Stockfish and PGN parser
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y stockfish
+          python -m pip install "python-chess>=1.999"
+      - name: Download recent public Lichess games
+        env:
+          USERNAME: ${{ inputs.lichess_username || vars.LICHESS_USERNAME || 'MarlinChessBot' }}
+        run: |
+          mkdir -p training/marlin-games
+          if [ -n "$USERNAME" ]; then
+            curl --fail --location --retry 3 \
+              "https://lichess.org/api/games/user/$USERNAME?max=50&opening=false&clocks=false&evals=false&accuracy=false" \
+              -H "Accept: application/x-chess-pgn" \
+              -o training/marlin-games/recent-lichess-games.pgn
+          fi
+          if ! find training/marlin-games -type f -name '*.pgn' -print -quit | grep -q .; then
+            echo "No PGNs found. Set a public Lichess username or add PGNs to training/marlin-games/."
+            exit 1
+          fi
+      - name: Test learning analysis helpers
+        working-directory: training
+        run: python -m unittest -v test_analyze_marlin_games.py
+      - name: Analyse games and build labelled positions
+        env:
+          MAX_GAMES: ${{ inputs.max_games || 50 }}
+          DEPTH: ${{ inputs.depth || 10 }}
+        run: |
+          python training/analyze_marlin_games.py \
+            --pgn-dir training/marlin-games \
+            --stockfish "$(command -v stockfish)" \
+            --max-games "$MAX_GAMES" \
+            --depth "$DEPTH"
+      - name: Upload learning report and dataset
+        uses: actions/upload-artifact@v5
+        with:
+          name: marlin-v10-learning-${{ github.run_number }}
+          path: |
+            training/reports/marlin-v10-analysis.json
+            training/data/marlin-v10-games.jsonl
+          if-no-files-found: error
+          retention-days: 30
