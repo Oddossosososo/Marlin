@@ -1,6 +1,10 @@
 name: MARLIN V10 game learning analysis
 
 on:
+  pull_request:
+    paths:
+      - "training/**"
+      - ".github/workflows/marlin-v10-learning.yml"
   workflow_dispatch:
     inputs:
       lichess_username:
@@ -29,6 +33,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test-feedback:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install test dependency
+        run: python -m pip install "python-chess>=1.999"
+      - name: Run learning and feedback tests
+        working-directory: training
+        run: python -m unittest discover -v -p 'test_*.py'
+
   analyse:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
