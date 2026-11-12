@@ -110,7 +110,7 @@ export async function searchV9(fen, requestedDepth = 4, onProgress = () => {}) {
     throw new TypeError("A valid FEN string is required.");
   }
 
-  const depth = Math.max(1, Math.min(22, Math.floor(Number(requestedDepth) || 22)));
+  const depth = Math.max(1, Math.min(22, Math.floor(Number(requestedDepth) || 4)));
   onProgress({ stage: "initialising", depth: 0, nodes: 0 });
   const wasm = await initialiseV9();
   onProgress({ stage: "searching", depth: 0, nodes: 0 });
