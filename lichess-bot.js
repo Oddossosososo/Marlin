@@ -4,7 +4,7 @@ import { initialiseV9OpeningBook, selectV9OpeningMove } from "./opening-book-v9.
 
 const TOKEN = process.env.LICHESS_TOKEN;
 const USERNAME = (process.env.LICHESS_USERNAME || "").toLowerCase();
-const DEPTH = Math.max(1, Math.min(12, Number(process.env.MARLIN_DEPTH) || 4));
+const DEPTH = Math.max(1, Math.min(22, Number(process.env.MARLIN_DEPTH) || 22));
 const API = "https://lichess.org/api";
 const headers = {
   Authorization: `Bearer ${TOKEN}`,
