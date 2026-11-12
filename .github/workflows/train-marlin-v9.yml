@@ -110,7 +110,12 @@ jobs:
             # Official Lichess broadcasts are CC BY-SA 4.0. The index list is
             # newest-first and is refreshed as monthly tournament PGNs arrive.
             curl --fail --location --retry 3 https://database.lichess.org/broadcast/list.txt -o /tmp/lichess-broadcast-list.txt
-            ARCHIVE_URL="$(grep -E '^https://database\\.lichess\\.org/broadcast/[^[:space:]]+\\.pgn\\.zst            case "$ARCHIVE_URL" in
+            ARCHIVE_URL="$(grep -E '^https://database\.lichess\.org/broadcast/[^[:space:]]+\.pgn\.zst$' /tmp/lichess-broadcast-list.txt | head -n 1)"
+            if [ -z "$ARCHIVE_URL" ]; then
+              echo "No valid Lichess broadcast PGN archive URL found in the official index."
+              sed -n '1,10p' /tmp/lichess-broadcast-list.txt
+              exit 1
+            fi
               https://database.lichess.org/broadcast/*.pgn.zst) ;;
               *) echo "Unexpected Lichess broadcast archive URL."; exit 1 ;;
             esac
