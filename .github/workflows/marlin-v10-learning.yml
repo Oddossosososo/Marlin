@@ -46,11 +46,12 @@ jobs:
       - name: Download recent public Lichess games
         env:
           USERNAME: ${{ inputs.lichess_username || vars.LICHESS_USERNAME || 'MarlinChessBot' }}
+          MAX_GAMES: ${{ inputs.max_games || 50 }}
         run: |
           mkdir -p training/marlin-games
           if [ -n "$USERNAME" ]; then
             curl --fail --location --retry 3 \
-              "https://lichess.org/api/games/user/$USERNAME?max=50&opening=false&clocks=false&evals=false&accuracy=false" \
+              "https://lichess.org/api/games/user/$USERNAME?max=$MAX_GAMES&opening=false&clocks=false&evals=false&accuracy=false" \
               -H "Accept: application/x-chess-pgn" \
               -o training/marlin-games/recent-lichess-games.pgn
           fi
@@ -63,14 +64,15 @@ jobs:
         run: python -m unittest -v test_analyze_marlin_games.py
       - name: Analyse games and build labelled positions
         env:
+          USERNAME: ${{ inputs.lichess_username || vars.LICHESS_USERNAME || 'MarlinChessBot' }}
           MAX_GAMES: ${{ inputs.max_games || 50 }}
           DEPTH: ${{ inputs.depth || 10 }}
         run: |
-          python training/analyze_marlin_games.py \
-            --pgn-dir training/marlin-games \
-            --stockfish "$(command -v stockfish)" \
-            --max-games "$MAX_GAMES" \
-            --depth "$DEPTH"
+          args=(--pgn-dir training/marlin-games --stockfish "$(command -v stockfish)" --max-games "$MAX_GAMES" --depth "$DEPTH")
+          if [ -n "$USERNAME" ]; then
+            args+=(--focus-player "$USERNAME")
+          fi
+          python training/analyze_marlin_games.py "${args[@]}"
       - name: Upload learning report and dataset
         uses: actions/upload-artifact@v5
         with:
