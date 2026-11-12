@@ -196,8 +196,29 @@ int evaluateNnue(const Board& b){
     return static_cast<int>(std::lround(std::max(-25.0f,std::min(25.0f,output))*800.0f));
 }
 
+// Penalise loose material that can be captured immediately. A piece is
+// considered loose only when an enemy attacks its square and its own side
+// does not defend it. The penalty is smaller when the owner is to move,
+// because it still has a chance to save the piece.
+int evaluateTacticalSafety(const Board& b){
+    int penalty=0;
+    for(int s=0;s<128;s++){
+        if(!valid(s)){s+=7;continue;}
+        const int piece=b.sq[s];
+        if(!piece)continue;
+        const int type=absPiece(piece);
+        if(type==KING||type>QUEEN)continue;
+        const int owner=sign(piece);
+        if(!attacked(b,s,-owner)||attacked(b,s,owner))continue;
+        const int urgency=(owner==b.side)?18:38;
+        penalty+=VALUE[type]*urgency/100;
+    }
+    return b.side>0?-penalty:penalty;
+}
+
 int evaluate(const Board& b){
-    return nnueReady?evaluateNnue(b):evaluateHandcrafted(b);
+    const int positional=nnueReady?evaluateNnue(b):evaluateHandcrafted(b);
+    return positional+evaluateTacticalSafety(b);
 }
 uint64_t hash(const Board& b){
     uint64_t h=1469598103934665603ULL;
