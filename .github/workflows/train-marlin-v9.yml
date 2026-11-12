@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@v5
       - id: input
         env:
-          MASTER_PGN_URL: ${{ inputs.master_pgn_url || '' }}
+          MASTER_PGN_URL: ${{ github.event.inputs.master_pgn_url || '' }}
         run: |
           if [ -n "$MASTER_PGN_URL" ] || find training/gm-games -type f -name '*.pgn' -print -quit 2>/dev/null | grep -q .; then
             echo "available=true" >> "$GITHUB_OUTPUT"
@@ -89,7 +89,7 @@ jobs:
         run: python -m pip install -r training/requirements.txt
       - name: Prepare authorised master PGNs
         env:
-          MASTER_PGN_URL: ${{ inputs.master_pgn_url || '' }}
+          MASTER_PGN_URL: ${{ github.event.inputs.master_pgn_url || '' }}
         run: |
           mkdir -p training/gm-games training/data nnue
           if [ -n "$MASTER_PGN_URL" ]; then
@@ -139,8 +139,8 @@ jobs:
           PY
       - name: Build Stockfish-labelled human master positions
         env:
-          MIN_ELO: ${{ inputs.min_elo || '2400' }}
-          TEACHER_DEPTH: ${{ inputs.depth || '12' }}
+          MIN_ELO: ${{ github.event.inputs.min_elo || '2400' }}
+          TEACHER_DEPTH: ${{ github.event.inputs.depth || '12' }}
         run: |
           python training/generate_gm_dataset.py \
             --pgn-dir training/gm-games \
@@ -152,8 +152,8 @@ jobs:
             --out training/data/marlin-v9-masters.jsonl
       - name: Build V9 opening book from the same GM games
         env:
-          MIN_ELO: ${{ inputs.min_elo || '2400' }}
-          DATA_ATTRIBUTION: ${{ inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
+          MIN_ELO: ${{ github.event.inputs.min_elo || '2400' }}
+          DATA_ATTRIBUTION: ${{ github.event.inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
         run: |
           python training/generate_opening_book.py \
             --pgn-dir training/gm-games \
@@ -165,8 +165,8 @@ jobs:
             --out nnue/marlin-v9-opening-book.json
       - name: Generate supplementary Stockfish teacher positions
         env:
-          GAMES: ${{ inputs.teacher_games || '300' }}
-          TEACHER_DEPTH: ${{ inputs.depth || '12' }}
+          GAMES: ${{ github.event.inputs.teacher_games || '300' }}
+          TEACHER_DEPTH: ${{ github.event.inputs.depth || '12' }}
         run: |
           python training/generate_dataset.py \
             --stockfish "$(command -v stockfish)" \
@@ -176,8 +176,8 @@ jobs:
             --out training/data/marlin-v9-teacher.jsonl
       - name: Train MARLIN V9 NNUE
         env:
-          EPOCHS: ${{ inputs.epochs || '40' }}
-          DATA_ATTRIBUTION: ${{ inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
+          EPOCHS: ${{ github.event.inputs.epochs || '40' }}
+          DATA_ATTRIBUTION: ${{ github.event.inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
         run: |
           python training/train_nnue_v7.py \
             --data training/data/marlin-v9-masters.jsonl \
@@ -263,8 +263,8 @@ jobs:
           PY
       - name: Build Stockfish-labelled human master positions
         env:
-          MIN_ELO: ${{ inputs.min_elo || '2400' }}
-          TEACHER_DEPTH: ${{ inputs.depth || '12' }}
+          MIN_ELO: ${{ github.event.inputs.min_elo || '2400' }}
+          TEACHER_DEPTH: ${{ github.event.inputs.depth || '12' }}
         run: |
           python training/generate_gm_dataset.py \
             --pgn-dir training/gm-games \
@@ -276,8 +276,8 @@ jobs:
             --out training/data/marlin-v9-masters.jsonl
       - name: Build V9 opening book from the same GM games
         env:
-          MIN_ELO: ${{ inputs.min_elo || '2400' }}
-          DATA_ATTRIBUTION: ${{ inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
+          MIN_ELO: ${{ github.event.inputs.min_elo || '2400' }}
+          DATA_ATTRIBUTION: ${{ github.event.inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
         run: |
           python training/generate_opening_book.py \
             --pgn-dir training/gm-games \
@@ -289,8 +289,8 @@ jobs:
             --out nnue/marlin-v9-opening-book.json
       - name: Generate supplementary Stockfish teacher positions
         env:
-          GAMES: ${{ inputs.teacher_games || '300' }}
-          TEACHER_DEPTH: ${{ inputs.depth || '12' }}
+          GAMES: ${{ github.event.inputs.teacher_games || '300' }}
+          TEACHER_DEPTH: ${{ github.event.inputs.depth || '12' }}
         run: |
           python training/generate_dataset.py \
             --stockfish "$(command -v stockfish)" \
@@ -300,8 +300,8 @@ jobs:
             --out training/data/marlin-v9-teacher.jsonl
       - name: Train MARLIN V9 NNUE
         env:
-          EPOCHS: ${{ inputs.epochs || '40' }}
-          DATA_ATTRIBUTION: ${{ inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
+          EPOCHS: ${{ github.event.inputs.epochs || '40' }}
+          DATA_ATTRIBUTION: ${{ github.event.inputs.data_attribution || 'Lichess official broadcast PGNs, CC BY-SA 4.0: https://database.lichess.org/broadcast/; filtered master-level human games.' }}
         run: |
           python training/train_nnue_v7.py \
             --data training/data/marlin-v9-masters.jsonl \
