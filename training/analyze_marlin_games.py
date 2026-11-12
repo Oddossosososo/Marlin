@@ -51,6 +51,7 @@ def analyse_game(
     depth: int,
     game_id: str,
     source_name: str,
+    focus_player: str | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     board = game.board()
     rows: list[dict[str, Any]] = []
@@ -83,10 +84,13 @@ def analyse_game(
         played_cp = int(played_cp_raw)
         loss = centipawn_loss(best_cp, played_cp)
         category = classify_loss(loss)
+        mover_name = game.headers.get("White" if mover == chess.WHITE else "Black", "")
+        is_focus_move = not focus_player or mover_name.casefold() == focus_player.casefold()
 
-        # The trainer consumes FEN + score_cp. Extra fields preserve provenance
-        # and connect each sample to the move that produced the position.
-        rows.append({
+        # Only MARLIN's own decisions enter the learning dataset when a focus
+        # player is supplied. Opponent moves remain in the report for context.
+        if is_focus_move:
+            rows.append({
             "fen": before_fen,
             "score_cp": max(-30000, min(30000, best_cp)),
             "game_id": game_id,
@@ -97,7 +101,8 @@ def analyse_game(
             "best_uci": best_uci,
             "centipawn_loss": loss,
             "classification": category,
-        })
+            "focus_player_move": is_focus_move,
+            })
         moves.append({
             "ply": ply + 1,
             "side": "white" if mover == chess.WHITE else "black",
@@ -109,19 +114,23 @@ def analyse_game(
             "played_eval_cp": played_cp,
             "centipawn_loss": loss,
             "classification": category,
+            "focus_player_move": is_focus_move,
         })
 
-    counts = {key: sum(m["classification"] == key for m in moves)
+    focus_moves = [m for m in moves if m["focus_player_move"]]
+    counts = {key: sum(m["classification"] == key for m in focus_moves)
               for key in ("inaccuracy", "mistake", "blunder")}
     report = {
         "game_id": game_id,
         "headers": dict(game.headers),
         "plies_analysed": len(moves),
         "average_centipawn_loss": round(
-            sum(m["centipawn_loss"] for m in moves) / len(moves), 1
-        ) if moves else 0,
+            sum(m["centipawn_loss"] for m in focus_moves) / len(focus_moves), 1
+        ) if focus_moves else 0,
+        "focus_player": focus_player,
+        "focus_plies_analysed": len(focus_moves),
         "counts": counts,
-        "critical_moves": [m for m in moves if m["classification"] != "ok"],
+        "critical_moves": [m for m in focus_moves if m["classification"] != "ok"],
         "moves": moves,
     }
     return rows, report
@@ -133,6 +142,8 @@ def main() -> None:
     parser.add_argument("--stockfish", default="stockfish")
     parser.add_argument("--depth", type=int, default=10)
     parser.add_argument("--max-games", type=int, default=500)
+    parser.add_argument("--focus-player", default=None,
+                        help="Only export/report mistakes by this PGN player name")
     parser.add_argument("--out", default="training/data/marlin-v10-games.jsonl")
     parser.add_argument("--report", default="training/reports/marlin-v10-analysis.json")
     args = parser.parse_args()
@@ -174,7 +185,8 @@ def main() -> None:
 
                         game_id = stable_game_id(game.headers, pgn_path.name, index)
                         rows, report = analyse_game(
-                            game, engine, args.depth, game_id, pgn_path.name
+                            game, engine, args.depth, game_id, pgn_path.name,
+                            args.focus_player,
                         )
                         for row in rows:
                             output.write(json.dumps(row, separators=(",", ":")) + "\n")
