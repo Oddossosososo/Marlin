@@ -1,0 +1,49 @@
+name: MARLIN World Championship
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 16 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: marlin-world-championship
+  cancel-in-progress: false
+
+jobs:
+  championship:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v12/continuous-strength
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install chess.js
+        run: npm install --no-save chess.js@1.4.0
+      - name: Build V9 WebAssembly engine
+        run: |
+          if [ ! -f marlin-wasm.js ] || [ ! -f marlin-wasm.wasm ]; then
+            echo "V9 WebAssembly build files are missing."
+            exit 1
+          fi
+      - name: Run round-robin championship
+        env:
+          MARLIN_TOURNAMENT_DEPTH: "3"
+        run: node championship.js
+      - name: Publish champion and tournament report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add champion.json championship-results.json championship-games.pgn
+          if git diff --cached --quiet; then
+            echo "No championship changes to publish."
+          else
+            git commit -m "Run MARLIN World Championship"
+            git push
+          fi
