@@ -13,9 +13,9 @@ class LearningFeedbackTests(unittest.TestCase):
 
     def test_missed_capture_is_flagged(self):
         row = {
-            "fen": "4k3/8/8/8/8/8/4q3/4K3 w - - 0 1",
-            "best_uci": "e1e2",
-            "played_uci": "e1d1",
+            "fen": "7k/8/8/8/4q3/8/4R3/K7 w - - 0 1",
+            "best_uci": "e2e4",
+            "played_uci": "e2d2",
             "classification": "blunder",
             "game_id": "test",
             "ply": 1,
@@ -27,9 +27,9 @@ class LearningFeedbackTests(unittest.TestCase):
 
     def test_report_counts_patterns_and_severity(self):
         row = {
-            "fen": "4k3/8/8/8/8/8/4q3/4K3 w - - 0 1",
-            "best_uci": "e1e2",
-            "played_uci": "e1d1",
+            "fen": "7k/8/8/8/4q3/8/4R3/K7 w - - 0 1",
+            "best_uci": "e2e4",
+            "played_uci": "e2d2",
             "classification": "blunder",
             "game_id": "test",
             "ply": 1,
