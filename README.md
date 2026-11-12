@@ -32,7 +32,7 @@ Lichess official broadcast PGNs are released under CC BY-SA 4.0. The trained fil
 
 ## MARLIN V10 continuous-learning foundation
 
-The V10 learning-analysis workflow (`.github/workflows/marlin-v10-learning.yml`) runs daily and can also be started manually. It downloads up to 50 recent public games for the configured Lichess bot username (default: `MarlinChessBot`), analyses every played move with Stockfish, classifies inaccuracies (50+ cp), mistakes (100+ cp), and blunders (200+ cp), and exports a JSON report plus Stockfish-labelled FEN positions as downloadable workflow artifacts.
+The V10 learning-analysis workflow (`.github/workflows/marlin-v10-learning.yml`) runs daily and can also be started manually. It downloads up to 50 recent public games for the configured Lichess bot username (default: `MarlinChessBot`), analyses both sides' moves for context, but classifies and exports training positions only for MARLIN's own moves: inaccuracies (50+ cp), mistakes (100+ cp), and blunders (200+ cp). It exports a JSON report plus Stockfish-labelled FEN positions as downloadable workflow artifacts.
 
 For private or locally supplied games, place authorised standard-chess PGNs in `training/marlin-games/` and run the workflow with the Lichess username input left blank. The reusable analyser is `training/analyze_marlin_games.py`; its helper tests are in `training/test_analyze_marlin_games.py`.
 
