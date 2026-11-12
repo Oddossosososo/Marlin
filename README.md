@@ -78,3 +78,18 @@ Required repository settings:
 The startup check verifies the BOT account before loading WebAssembly. Authentication failures now explain the required token scope. Dropped game streams reconnect with backoff, and rejected or stale moves are retried from a fresh game snapshot.
 
 The bot accepts standard-chess challenges only. GitHub Actions stops a run after 350 minutes; the six-hour schedule starts the next run automatically, leaving a short restart gap. For an immediate start, manually dispatch the **MARLIN V9 Lichess Bot** workflow on `main` after configuring the secret and variables.
+
+
+## MARLIN V10.4 learning feedback
+
+The game-analysis workflow now turns Stockfish-labelled MARLIN positions into
+a second diagnostic report. It groups observable signals such as missed
+captures, missed checking opportunities, missed promotions and material lost
+immediately after a move, and breaks those signals down by opening,
+middlegame and endgame. The report includes example FENs and UCI moves so
+positions can be reviewed before changing search or evaluation code.
+
+This is a feedback and diagnosis loop, not automatic self-training. It does
+not modify engine weights, source code, or the live Lichess bot. The signals
+are heuristics rather than proven root causes; inspect examples and confirm
+with engine analysis before making changes.
