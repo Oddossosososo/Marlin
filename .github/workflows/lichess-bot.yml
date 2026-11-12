@@ -5,7 +5,8 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/lichess-bot.yml"
+      - "nnue/marlin-v9.nnue.json"
+      - "nnue/marlin-v9-opening-book.json"
   schedule:
     # Restart shortly after the 350-minute GitHub Actions job timeout.
     - cron: "0 */6 * * *"
@@ -15,7 +16,7 @@ permissions:
 
 concurrency:
   group: marlin-v9-lichess-bot
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   lichess-bot:
