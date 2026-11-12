@@ -17,12 +17,12 @@
       <a class="side-link" href="./benchmark.html">⚡ <span>Benchmark</span></a>
       <div class="side-foot"><img class="sidebar-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN</span><small>ENGINE LAB</small></div>
     </nav>
-    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">V9 · C++ SEARCH ENGINE</span></header>
+    <div class="workspace">\n    <header><div class="brand"><img class="brand-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin chess logo"><div><h1>MARLIN</h1><p>CHESS ENGINE · EXPERIMENTAL</p></div></div><span class="version" id="version-marker">WORLD CHAMPION · AUTO-SELECT</span></header>
     <section class="layout">
       <div class="board-wrap">
         <div class="player-identity engine-player" id="black-player">
           <img class="player-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="MARLIN engine logo">
-          <span class="player-copy"><small>MARLIN ENGINE</small><strong>MARLIN V9</strong><em>CHESS ENGINE</em></span>
+          <span class="player-copy"><small>MARLIN ENGINE</small><strong>MARLIN</strong><em>CHESS ENGINE</em></span>
           <span class="player-badge">ENGINE</span>
         </div>
         <div class="board" id="board" role="grid" aria-label="Chess board"></div>
@@ -39,17 +39,17 @@
           <select id="depth"><option value="1">Depth 1 · Fast</option><option value="2">Depth 2 · Normal</option><option value="3">Depth 3 · Standard</option><option value="4">Depth 4 · Standard</option><option value="5">Depth 5 · Stronger</option><option value="6" selected>Depth 6 · Deep</option><option value="7">Depth 7 · Very deep</option><option value="8">Depth 8 · Very deep</option><option value="9">Depth 9 · Very deep</option><option value="10">Depth 10 · Very deep</option><option value="11">Depth 11 · Extreme</option><option value="12">Depth 12 · Extreme</option><option value="13">Depth 13 · Very deep</option><option value="14">Depth 14 · Very deep</option><option value="15">Depth 15 · Very deep</option><option value="16">Depth 16 · Very deep</option><option value="17">Depth 17 · Experimental</option><option value="18">Depth 18 · Experimental</option><option value="19">Depth 19 · Experimental</option><option value="20">Depth 20 · Experimental</option><option value="21">Depth 21 · Experimental</option><option value="22">Depth 22 · Experimental</option></select>
           <button id="new-game" class="primary">New game</button>
           <button id="stop-search" disabled>Stop search</button>
-          <p class="search-depth-hint">Depth is measured in plies. The V9 C++ WebAssembly search is capped at 12 plies; the V7 search is used only if WebAssembly is unavailable.</p>
+          <p class="search-depth-hint">Depth is measured in plies. MARLIN automatically uses the current World Championship winner. The active implementation is hidden behind the MARLIN name.</p>
           <button id="undo">Undo last turn</button>
         </div>
         <div class="thinking" id="thinking">MARLIN READY</div>
         <div class="moves"><div class="section-title">MOVE HISTORY</div><ol id="history"><li class="empty">Moves will appear here.</li></ol></div>
-        <p class="note">You play White. MARLIN V9 C++ plays Black when WebAssembly is available; V7 is the fallback. Captures use normal chess material values, and the engine evaluates whether exchanges are safe before choosing them.</p>
+        <p class="note">You play White. MARLIN plays Black using the current World Championship winner. Captures use normal chess material values, and the engine evaluates whether exchanges are safe before choosing them.</p>
       </aside>
     </section>
     <section class="arena-panel" id="arena-panel" hidden>
       <div class="arena-board-slot" id="arena-board-slot"></div>
-      <div class="arena-heading"><div class="arena-brand"><img class="section-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><div class="section-title">ENGINE BATTLE</div><h2>V9 vs V8</h2><p class="pgn-help">V9 C++ search challenger versus the V8 JavaScript engine. Colours alternate every game.</p></div></div><span class="arena-live" id="arena-live">READY</span></div>
+      <div class="arena-heading"><div class="arena-brand"><img class="section-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><div><div class="section-title">ENGINE BATTLE</div><h2>WORLD CHAMPIONSHIP</h2><p class="pgn-help">All available engine generations compete in a ten-game-per-pair round robin. The winner becomes the active MARLIN engine automatically.</p></div></div><span class="arena-live" id="arena-live">READY</span></div>
       <div class="arena-contenders">
         <div class="contender newer"><small>CHALLENGER</small><strong>Marlin V9</strong><span>V9 · C++ search / killer moves / history heuristic / transposition-table mate-score fix</span></div>
         <div class="versus">VS</div>
@@ -71,7 +71,7 @@
         <div><small>DRAWS</small><strong id="arena-draws">0</strong></div>
         <div><small>V8 WINS</small><strong id="v8-wins">0</strong></div>
       </div>
-      <p class="pgn-help">V9 runs the C++ WebAssembly search (maximum depth 12); V8 runs its JavaScript search and evaluation. Both are given the same position and requested depth. Their evaluators differ, so this compares the complete engine versions, not search speed alone.</p>
+      <p class="pgn-help">The nightly World Championship compares V1, V2 and V4–V9. The player-facing engine remains MARLIN; its active implementation is selected behind the scenes.</p>
       <p class="pgn-help">This is a local self-play test, not official Fishtest or an Elo rating. One match is shown on the board.</p>
     </section>
     <section class="pgn-panel best-move-panel">
@@ -96,7 +96,7 @@
       <textarea id="pgn-output" rows="9" readonly spellcheck="false" placeholder="Your generated PGN will appear here."></textarea>
       <p id="pgn-status" class="pgn-help" aria-live="polite">Marlin will be tagged as GM in the selected colour.</p>
     </section>
-    <footer><img class="footer-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN V9 · C++ SEARCH / V8 CHALLENGER</span></footer>
+    <footer><img class="footer-logo" src="./Screenshot%202026-11-10%206.36.32%20PM.png" alt="Marlin logo"><span>MARLIN · WORLD CHAMPION ENGINE</span></footer>
     </div>
   <script type="module" src="app.js"></script>
 </body>

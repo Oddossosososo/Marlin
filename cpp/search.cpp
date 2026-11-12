@@ -154,19 +154,148 @@ float nnueOutB=0.0f;
 bool nnueReady=false;
 
 int evaluateHandcrafted(const Board& b){
+    // Tapered, side-to-move-relative evaluation. Keep this inexpensive:
+    // it is called at every quiescence/search leaf.
     int score=0;
-    for(int s=0;s<128;s++){if(!valid(s)){s+=7;continue;}int p=b.sq[s];if(!p)continue;int t=absPiece(p),r=rankOf(s),f=fileOf(s);
-        int positional=0;int advance=p>0?r:7-r;int center=7-(std::abs(3-f)+std::abs(3-r));
-        if(t==PAWN)positional=advance*7+center*2;
-        else if(t==KNIGHT)positional=center*9-((r==0||r==7||f==0||f==7)?18:0);
-        else if(t==BISHOP)positional=center*4;
-        else if(t==ROOK)positional=advance*2;
-        else if(t==KING)positional=center*(b.halfmove>35?7:-2);
-        score+=sign(p)*(VALUE[t]+positional);
-    }
-    return b.side*score;
-}
+    int phase=0; // 0=endgame, 24=opening
+    int bishops[2]={0,0};
+    int pawnFiles[2][8]{};
+    int rookFiles[2][8]{};
 
+    for(int s=0;s<128;s++){
+        if(!valid(s)){s+=7;continue;}
+        const int p=b.sq[s];
+        if(!p)continue;
+        switch(absPiece(p)){
+            case KNIGHT: case BISHOP: phase+=1; break;
+            case ROOK: phase+=2; break;
+            case QUEEN: phase+=4; break;
+            default: break;
+        }
+    }
+    phase=std::min(24,phase);
+
+    for(int s=0;s<128;s++){
+        if(!valid(s)){s+=7;continue;}
+        const int p=b.sq[s];
+        if(!p)continue;
+        const int colour=p>0?0:1;
+        const int type=absPiece(p);
+        const int rank=rankOf(s), file=fileOf(s);
+        const int advance=colour==0?rank:7-rank;
+        const int center=7-(std::abs(3-file)+std::abs(3-rank));
+        int positional=0;
+
+        if(type==PAWN){
+            ++pawnFiles[colour][file];
+            positional=advance*5+center;
+        }else if(type==KNIGHT){
+            positional=center*8-((rank==0||rank==7||file==0||file==7)?14:0);
+        }else if(type==BISHOP){
+            ++bishops[colour];
+            positional=center*4;
+        }else if(type==ROOK){
+            ++rookFiles[colour][file];
+            positional=advance*2;
+            if(rank==(colour==0?6:1))positional+=16;
+        }else if(type==QUEEN){
+            positional=center*2;
+        }else if(type==KING){
+            positional=center*(24-phase)/4;
+        }
+        score+=(colour==0?1:-1)*(VALUE[type]+positional);
+    }
+
+    // Pawn structure and passed-pawn potential.
+    for(int s=0;s<128;s++){
+        if(!valid(s)){s+=7;continue;}
+        const int p=b.sq[s];
+        if(absPiece(p)!=PAWN)continue;
+        const int colour=p>0?0:1;
+        const int enemy=1-colour;
+        const int file=fileOf(s), rank=rankOf(s);
+        const int direction=colour==0?1:-1;
+        const int advance=colour==0?rank:7-rank;
+        int penalty=0;
+        if((file==0||pawnFiles[colour][file-1]==0)&&
+           (file==7||pawnFiles[colour][file+1]==0))penalty+=12;
+        if(pawnFiles[colour][file]>1)penalty+=14;
+
+        bool passed=true;
+        for(int df=-1;df<=1;df++){
+            const int enemyFile=file+df;
+            if(enemyFile<0||enemyFile>7)continue;
+            for(int er=rank+direction;er>=0&&er<8;er+=direction){
+                if(b.sq[er*16+enemyFile]==(enemy==0?PAWN:-PAWN)){
+                    passed=false;
+                    break;
+                }
+            }
+            if(!passed)break;
+        }
+        const int bonus=passed?((advance==1)?8:(advance==2)?14:(advance==3)?24:
+                               (advance==4)?38:(advance==5)?58:(advance==6)?85:0):0;
+        score+=(colour==0?1:-1)*(bonus-penalty);
+    }
+
+    // Bishop pair and rook activity on open/semi-open files.
+    for(int colour=0;colour<2;colour++){
+        const int signColour=colour==0?1:-1;
+        if(bishops[colour]>=2)score+=signColour*28;
+        for(int file=0;file<8;file++){
+            if(rookFiles[colour][file]==0||pawnFiles[colour][file]!=0)continue;
+            score+=signColour*(pawnFiles[1-colour][file]==0?15:8);
+        }
+    }
+
+    // Mobility rewards active minor/major pieces without generating moves.
+    for(int s=0;s<128;s++){
+        if(!valid(s)){s+=7;continue;}
+        const int p=b.sq[s];
+        if(!p)continue;
+        const int type=absPiece(p);
+        if(type==PAWN||type==KING)continue;
+        int mobility=0;
+        if(type==KNIGHT){
+            for(int d:KNIGHT_OFF){
+                const int to=s+d;
+                if(valid(to)&&sign(b.sq[to])!=sign(p))++mobility;
+            }
+        }else{
+            const int* dirs=type==BISHOP?BISHOP_OFF:type==ROOK?ROOK_OFF:QUEEN_OFF;
+            const int count=type==QUEEN?8:4;
+            for(int i=0;i<count;i++){
+                for(int to=s+dirs[i];valid(to);to+=dirs[i]){
+                    if(sign(b.sq[to])==sign(p))break;
+                    ++mobility;
+                    if(b.sq[to])break;
+                }
+            }
+        }
+        score+=sign(p)*std::min(16,mobility)*2;
+    }
+
+    // King shelter and enemy pressure on neighbouring squares.
+    for(int colour=0;colour<2;colour++){
+        const int king=colour==0?b.whiteKing:b.blackKing;
+        if(!valid(king))continue;
+        const int enemy=colour==0?-1:1;
+        const int forward=colour==0?16:-16;
+        int shelter=0, pressure=0;
+        for(int df=-1;df<=1;df++){
+            const int shield=king+forward+df;
+            if(valid(shield)&&b.sq[shield]==(colour==0?PAWN:-PAWN))shelter+=8;
+            const int front=king+forward+df;
+            if(valid(front)&&attacked(b,front,enemy))pressure++;
+            const int flank=king+df;
+            if(df!=0&&valid(flank)&&attacked(b,flank,enemy))pressure++;
+        }
+        score+=(colour==0?1:-1)*(shelter-pressure*7);
+    }
+
+    // A small tempo bonus helps choose between otherwise equal moves.
+    return b.side*score+8;
+}
 int evaluateNnue(const Board& b){
     std::array<float,NNUE_HIDDEN1> h1=nnueFc1B;
     for(int s=0;s<128;s++){
@@ -359,7 +488,7 @@ extern "C" uint64_t marlin_cpp_perft(const char* fen,int depth){
 extern "C" int marlin_cpp_search(const char* fen,int maxDepth,char* output,int outputSize){
     if(!output||outputSize<8)return -1;Board b;if(!parseFen(fen,b)){std::strncpy(output,"bestmove 0000",outputSize-1);output[outputSize-1]=0;return -1;}
     std::vector<Move> moves;legalMoves(b,moves,false);if(moves.empty()){std::strncpy(output,"bestmove 0000",outputSize-1);output[outputSize-1]=0;return 0;}
-    nodes=0;Move best=moves[0];int bestScore=0;int depthLimit=std::max(1,std::min(12,maxDepth));
+    nodes=0;Move best=moves[0];int bestScore=0;int depthLimit=std::max(1,std::min(22,maxDepth)); // Allow requested searches up to depth 22.
     // The root loop searches moves directly instead of going through
     // negamax(), so explicitly extend a root position that begins in check.
     const int rootCheckExtension=inCheck(b,b.side)?1:0;

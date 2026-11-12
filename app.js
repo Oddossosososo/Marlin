@@ -31,9 +31,9 @@ function updatePlayerIdentity() {
   const blackPlayer = document.querySelector("#black-player");
   const whitePlayer = document.querySelector("#white-player");
   const inArena = !arenaPanel.hidden;
-  const v9IsBlack = lastArenaV9Color === "b";
-  const blackName = inArena ? (v9IsBlack ? "MARLIN V9" : "MARLIN V8") : (engineStatus.includes("MARLIN V7") ? "MARLIN V7" : "MARLIN V9");
-  const whiteName = inArena ? (v9IsBlack ? "MARLIN V8" : "MARLIN V9") : "YOU";
+  const v9IsBlack = lastArenaV9Color === "b"; // Internal Arena colour tracking only.
+  const blackName = inArena ? (v9IsBlack ? "MARLIN" : "MARLIN") : "MARLIN";
+  const whiteName = inArena ? "MARLIN" : "YOU";
   const whiteIsHuman = !inArena;
 
   const setEngine = (element, name) => {
