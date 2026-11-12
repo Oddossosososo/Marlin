@@ -61,7 +61,7 @@ jobs:
           fi
       - name: Test learning analysis helpers
         working-directory: training
-        run: python -m unittest -v test_analyze_marlin_games.py
+        run: python -m unittest discover -v -p 'test_*.py'
       - name: Analyse games and build labelled positions
         env:
           USERNAME: ${{ inputs.lichess_username || vars.LICHESS_USERNAME || 'MarlinChessBot' }}
@@ -73,12 +73,16 @@ jobs:
             args+=(--focus-player "$USERNAME")
           fi
           python training/analyze_marlin_games.py "${args[@]}"
+      - name: Build V10.4 learning feedback report
+        run: |
+          python training/learning_feedback.py
       - name: Upload learning report and dataset
         uses: actions/upload-artifact@v5
         with:
           name: marlin-v10-learning-${{ github.run_number }}
           path: |
             training/reports/marlin-v10-analysis.json
+            training/reports/marlin-v10.4-feedback.json
             training/data/marlin-v10-games.jsonl
           if-no-files-found: error
           retention-days: 30
