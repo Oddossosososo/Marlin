@@ -154,13 +154,26 @@ float nnueOutB=0.0f;
 bool nnueReady=false;
 
 int evaluateHandcrafted(const Board& b){
-    // Tapered, side-to-move-relative evaluation. Keep this deliberately
-    // inexpensive: it is called at every quiescence/search leaf.
+    // Tapered, side-to-move-relative evaluation. Keep this inexpensive:
+    // it is called at every quiescence/search leaf.
     int score=0;
     int phase=0; // 0=endgame, 24=opening
     int bishops[2]={0,0};
     int pawnFiles[2][8]{};
-    int kingSquares[2]={b.whiteKing,b.blackKing};
+    int rookFiles[2][8]{};
+
+    for(int s=0;s<128;s++){
+        if(!valid(s)){s+=7;continue;}
+        const int p=b.sq[s];
+        if(!p)continue;
+        switch(absPiece(p)){
+            case KNIGHT: case BISHOP: phase+=1; break;
+            case ROOK: phase+=2; break;
+            case QUEEN: phase+=4; break;
+            default: break;
+        }
+    }
+    phase=std::min(24,phase);
 
     for(int s=0;s<128;s++){
         if(!valid(s)){s+=7;continue;}
@@ -169,36 +182,30 @@ int evaluateHandcrafted(const Board& b){
         const int colour=p>0?0:1;
         const int type=absPiece(p);
         const int rank=rankOf(s), file=fileOf(s);
-        const int advance=p>0?rank:7-rank;
-        int positional=0;
+        const int advance=colour==0?rank:7-rank;
         const int center=7-(std::abs(3-file)+std::abs(3-rank));
+        int positional=0;
 
         if(type==PAWN){
             ++pawnFiles[colour][file];
             positional=advance*5+center;
         }else if(type==KNIGHT){
-            phase+=1;
             positional=center*8-((rank==0||rank==7||file==0||file==7)?14:0);
         }else if(type==BISHOP){
-            phase+=1;
             ++bishops[colour];
             positional=center*4;
         }else if(type==ROOK){
-            phase+=2;
+            ++rookFiles[colour][file];
             positional=advance*2;
             if(rank==(colour==0?6:1))positional+=16;
         }else if(type==QUEEN){
-            phase+=4;
             positional=center*2;
         }else if(type==KING){
-            // The king is kept safer in the middlegame and centralised later.
-            const int kingCenter=7-(std::abs(3-file)+std::abs(3-rank));
-            positional=kingCenter*(phase>10?-3:5);
+            positional=center*(24-phase)/4;
         }
         score+=(colour==0?1:-1)*(VALUE[type]+positional);
     }
 
-    phase=std::min(24,phase);
     // Pawn structure and passed-pawn potential.
     for(int s=0;s<128;s++){
         if(!valid(s)){s+=7;continue;}
@@ -226,18 +233,17 @@ int evaluateHandcrafted(const Board& b){
             }
             if(!passed)break;
         }
-        int bonus=passed?((advance==1)?8:(advance==2)?14:(advance==3)?24:
-                          (advance==4)?38:(advance==5)?58:(advance==6)?85:0):0;
-        const int signedScore=(colour==0?1:-1)*(bonus-penalty);
-        score+=signedScore;
+        const int bonus=passed?((advance==1)?8:(advance==2)?14:(advance==3)?24:
+                               (advance==4)?38:(advance==5)?58:(advance==6)?85:0):0;
+        score+=(colour==0?1:-1)*(bonus-penalty);
     }
 
-    // Bishop pair and rook files.
+    // Bishop pair and rook activity on open/semi-open files.
     for(int colour=0;colour<2;colour++){
         const int signColour=colour==0?1:-1;
         if(bishops[colour]>=2)score+=signColour*28;
         for(int file=0;file<8;file++){
-            if(pawnFiles[colour][file]!=0)continue;
+            if(rookFiles[colour][file]==0||pawnFiles[colour][file]!=0)continue;
             score+=signColour*(pawnFiles[1-colour][file]==0?15:8);
         }
     }
@@ -251,7 +257,10 @@ int evaluateHandcrafted(const Board& b){
         if(type==PAWN||type==KING)continue;
         int mobility=0;
         if(type==KNIGHT){
-            for(int d:KNIGHT_OFF){const int to=s+d;if(valid(to)&&sign(b.sq[to])!=sign(p))++mobility;}
+            for(int d:KNIGHT_OFF){
+                const int to=s+d;
+                if(valid(to)&&sign(b.sq[to])!=sign(p))++mobility;
+            }
         }else{
             const int* dirs=type==BISHOP?BISHOP_OFF:type==ROOK?ROOK_OFF:QUEEN_OFF;
             const int count=type==QUEEN?8:4;
@@ -266,9 +275,9 @@ int evaluateHandcrafted(const Board& b){
         score+=sign(p)*std::min(16,mobility)*2;
     }
 
-    // King shelter and enemy pressure on the neighbouring squares.
+    // King shelter and enemy pressure on neighbouring squares.
     for(int colour=0;colour<2;colour++){
-        const int king=kingSquares[colour];
+        const int king=colour==0?b.whiteKing:b.blackKing;
         if(!valid(king))continue;
         const int enemy=colour==0?-1:1;
         const int forward=colour==0?16:-16;
@@ -276,22 +285,12 @@ int evaluateHandcrafted(const Board& b){
         for(int df=-1;df<=1;df++){
             const int shield=king+forward+df;
             if(valid(shield)&&b.sq[shield]==(colour==0?PAWN:-PAWN))shelter+=8;
-            const int zone=king+forward+df;
-            if(valid(zone)&&attacked(b,zone,enemy))pressure+=1;
-            const int sideZone=king+df;
-            if(df!=0&&valid(sideZone)&&attacked(b,sideZone,enemy))pressure+=1;
+            const int front=king+forward+df;
+            if(valid(front)&&attacked(b,front,enemy))pressure++;
+            const int flank=king+df;
+            if(df!=0&&valid(flank)&&attacked(b,flank,enemy))pressure++;
         }
         score+=(colour==0?1:-1)*(shelter-pressure*7);
-    }
-
-    // Taper the king's centralisation bonus toward the endgame.
-    const int whiteKing=b.whiteKing, blackKing=b.blackKing;
-    if(valid(whiteKing)&&valid(blackKing)){
-        const auto kingCentrality=[](int square){
-            return 7-(std::abs(3-fileOf(square))+std::abs(3-rankOf(square)));
-        };
-        const int endgameWeight=24-phase;
-        score+=(kingCentrality(whiteKing)-kingCentrality(blackKing))*endgameWeight/6;
     }
 
     // A small tempo bonus helps choose between otherwise equal moves.
