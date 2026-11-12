@@ -99,3 +99,11 @@ This is a feedback and diagnosis loop, not automatic self-training. It does
 not modify engine weights, source code, or the live Lichess bot. The signals
 are heuristics rather than proven root causes; inspect examples and confirm
 with engine analysis before making changes.
+
+## MARLIN V10.5 automated strength testing
+
+Run **MARLIN V10.5 strength benchmark** from GitHub Actions to play the current checked-in C++ WebAssembly search against Stockfish. The harness plays four fixed openings with both colours (eight games total), uses one Stockfish thread, and records wins, draws, losses, score percentage and PGNs. The default settings are MARLIN depth 4 and Stockfish depth 8 with UCI strength limiting targeted at 1600 Elo; all three settings can be changed when manually dispatching the workflow.
+
+The workflow builds the WebAssembly engine from the checked-out source before playing, so it tests that source revision rather than relying on a stale generated binary. Results are uploaded as a 90-day artifact and included in the GitHub Actions run summary. Pull requests touching the benchmark or C++ search also run the match automatically.
+
+This is an initial regression benchmark, not a precise Elo measurement: eight games are too few for a reliable rating estimate, and Stockfish's UCI strength setting is approximate. To compare a candidate with the previous MARLIN champion, run both revisions with identical settings and opening positions. The benchmark does not train weights or promote code automatically.
