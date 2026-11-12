@@ -488,7 +488,7 @@ extern "C" uint64_t marlin_cpp_perft(const char* fen,int depth){
 extern "C" int marlin_cpp_search(const char* fen,int maxDepth,char* output,int outputSize){
     if(!output||outputSize<8)return -1;Board b;if(!parseFen(fen,b)){std::strncpy(output,"bestmove 0000",outputSize-1);output[outputSize-1]=0;return -1;}
     std::vector<Move> moves;legalMoves(b,moves,false);if(moves.empty()){std::strncpy(output,"bestmove 0000",outputSize-1);output[outputSize-1]=0;return 0;}
-    nodes=0;Move best=moves[0];int bestScore=0;int depthLimit=std::max(1,std::min(12,maxDepth));
+    nodes=0;Move best=moves[0];int bestScore=0;int depthLimit=std::max(1,std::min(22,maxDepth)); // Allow requested searches up to depth 22.
     // The root loop searches moves directly instead of going through
     // negamax(), so explicitly extend a root position that begins in check.
     const int rootCheckExtension=inCheck(b,b.side)?1:0;
