@@ -1,0 +1,90 @@
+name: MARLIN V10.5 strength benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      marlin_depth:
+        description: "MARLIN C++ search depth (1-12)"
+        required: true
+        type: number
+        default: 4
+      stockfish_depth:
+        description: "Stockfish search depth (1-20)"
+        required: true
+        type: number
+        default: 8
+      stockfish_elo:
+        description: "Stockfish UCI target rating"
+        required: true
+        type: number
+        default: 1600
+  pull_request:
+    branches: [main]
+    paths:
+      - "training/benchmark_marlin_strength.mjs"
+      - ".github/workflows/marlin-v10-strength.yml"
+      - "cpp/**"
+      - "marlin-v9.js"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marlin-v10-strength-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  paired-match:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - uses: mymindstorm/setup-emsdk@v14
+      - name: Install chess dependency and Stockfish
+        run: |
+          npm install --no-audit --no-fund
+          sudo apt-get update
+          sudo apt-get install -y stockfish
+      - name: Build optimized MARLIN WebAssembly engine
+        run: |
+          em++ cpp/attacks.cpp cpp/search.cpp \
+            -std=c++17 -O3 -flto \
+            -s MODULARIZE=1 \
+            -s EXPORT_ES6=1 \
+            -s ENVIRONMENT=node \
+            -s ALLOW_MEMORY_GROWTH=1 \
+            -s FILESYSTEM=0 \
+            -s EXPORTED_FUNCTIONS='["_marlin_cpp_search","_malloc","_free"]' \
+            -s EXPORTED_RUNTIME_METHODS='["UTF8ToString","stringToUTF8"]' \
+            -o marlin-wasm.js
+      - name: Run paired-colour match
+        env:
+          MARLIN_BENCH_DEPTH: ${{ inputs.marlin_depth || 4 }}
+          STOCKFISH_BENCH_DEPTH: ${{ inputs.stockfish_depth || 8 }}
+          STOCKFISH_BENCH_ELO: ${{ inputs.stockfish_elo || 1600 }}
+        run: |
+          mkdir -p training/reports
+          node training/benchmark_marlin_strength.mjs | tee training/reports/marlin-v10.5-strength.txt
+          grep '^MARLIN_BENCHMARK_JSON=' training/reports/marlin-v10.5-strength.txt | sed 's/^MARLIN_BENCHMARK_JSON=//' > training/reports/marlin-v10.5-strength.json
+      - name: Publish benchmark summary
+        if: always()
+        run: |
+          if [ -f training/reports/marlin-v10.5-strength.txt ]; then
+            echo '## MARLIN V10.5 paired-colour benchmark' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Same four openings, both colours, against fixed Stockfish settings.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'This small sample is a regression signal, not a reliable Elo estimate.' >> "$GITHUB_STEP_SUMMARY"
+            echo ' ```text ' >> "$GITHUB_STEP_SUMMARY"
+            cat training/reports/marlin-v10.5-strength.txt >> "$GITHUB_STEP_SUMMARY"
+            echo ' ``` ' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload PGNs and benchmark report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: marlin-v10.5-strength-${{ github.run_number }}
+          path: training/reports/marlin-v10.5-strength.*
+          if-no-files-found: warn
+          retention-days: 90
