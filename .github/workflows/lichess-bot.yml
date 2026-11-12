@@ -45,7 +45,7 @@ jobs:
 
       - name: Start MARLIN V9 on Lichess
         env:
-          LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}
+          LICHESS_TOKEN: ${{ secrets.LICHESS1_TOKEN || secrets.LICHESS_TOKEN }}
           LICHESS_USERNAME: ${{ vars.LICHESS_USERNAME }}
           MARLIN_DEPTH: "${{ vars.MARLIN_DEPTH || '4' }}"
         run: npm run lichess-bot
