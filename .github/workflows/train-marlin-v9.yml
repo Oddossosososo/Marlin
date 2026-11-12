@@ -125,8 +125,8 @@ jobs:
             --stockfish "$(command -v stockfish)" \
             --min-elo "$MIN_ELO" \
             --depth "$TEACHER_DEPTH" \
-            --sample-every 2 \
-            --max-positions 150000 \
+            --sample-every 4 \
+            --max-positions 75000 \
             --out training/data/marlin-v9-masters.jsonl
 
       - name: Build V9 opening book
@@ -151,7 +151,7 @@ jobs:
             --stockfish "$(command -v stockfish)" \
             --games "$GAMES" \
             --depth "$TEACHER_DEPTH" \
-            --sample-every 2 \
+            --sample-every 4 \
             --out training/data/marlin-v9-teacher.jsonl
 
       - name: Train MARLIN V9 NNUE
