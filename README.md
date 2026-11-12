@@ -30,6 +30,12 @@ Lichess official broadcast PGNs are released under CC BY-SA 4.0. The trained fil
 
 **Current model status:** the checked-in opening-book file is initially empty, and the V9 NNUE is not considered active until the first training run publishes `nnue/marlin-v9.nnue.json`. Until then V9 uses its handcrafted evaluation and curated opening fallback. Training loss or GM-game exposure alone does not establish GM playing strength; use paired engine matches to measure it.
 
+## MARLIN V10.3 search intelligence
+
+V10.3 improves the existing C++ search without changing the engine's evaluation weights or starting a language migration. Root search now uses principal-variation search: the first move receives a full window and later moves receive a null-window scout, with a full re-search only when a scout improves alpha. Iterative-deepening iterations use aspiration windows centred on the previous completed score and widen/retry on fail-low or fail-high. Transposition-table replacement now preserves a deeper entry when a different position collides in the direct-mapped table.
+
+The root move and score are committed only after a complete iteration. The existing 12-ply C++ limit remains in place; V10.3 does not claim a new time-control guarantee or increase the maximum depth. Benchmark changes with the paired V10.5 match workflow before treating them as a strength improvement.
+
 ## MARLIN V10 continuous-learning foundation
 
 The V10 learning-analysis workflow (`.github/workflows/marlin-v10-learning.yml`) runs daily and can also be started manually. It downloads up to 50 recent public games for the configured Lichess bot username (default: `MarlinChessBot`), analyses both sides' moves for context, but classifies and exports training positions only for MARLIN's own moves: inaccuracies (50+ cp), mistakes (100+ cp), and blunders (200+ cp). It exports a JSON report plus Stockfish-labelled FEN positions as downloadable workflow artifacts.
