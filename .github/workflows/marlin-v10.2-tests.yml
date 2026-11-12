@@ -1,0 +1,24 @@
+name: MARLIN V10.2 learning trend tests
+on:
+  pull_request:
+    paths:
+      - "training/learning_trends.py"
+      - "training/test_learning_trends.py"
+      - ".github/workflows/marlin-v10.2-tests.yml"
+  push:
+    branches: ["v10.2/learning-trends"]
+    paths:
+      - "training/learning_trends.py"
+      - "training/test_learning_trends.py"
+      - ".github/workflows/marlin-v10.2-tests.yml"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Run learning trend tests
+        working-directory: training
+        run: python -m unittest -v test_learning_trends.py
