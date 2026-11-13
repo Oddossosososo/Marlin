@@ -7,6 +7,7 @@ on:
     paths:
       - "nnue/marlin-v9.nnue.json"
       - "nnue/marlin-v9-opening-book.json"
+      - ".github/workflows/lichess-bot.yml"
   schedule:
     # Restart shortly after the 350-minute GitHub Actions job timeout.
     - cron: "0 */6 * * *"
@@ -48,5 +49,5 @@ jobs:
         env:
           LICHESS_TOKEN: ${{ secrets.LICHESS1_TOKEN || secrets.LICHESS_TOKEN }}
           LICHESS_USERNAME: ${{ vars.LICHESS_USERNAME }}
-          MARLIN_DEPTH: "${{ vars.MARLIN_DEPTH || '4' }}"
+          MARLIN_DEPTH: "${{ vars.MARLIN_DEPTH || '5' }}"
         run: npm run lichess-bot
