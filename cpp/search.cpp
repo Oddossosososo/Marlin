@@ -198,7 +198,13 @@ int evaluateNnue(const Board& b){
 }
 
 int evaluate(const Board& b){
-    return nnueReady?evaluateNnue(b):evaluateHandcrafted(b);
+    // Keep exact material accounting authoritative. The trained network is a
+    // positional correction, not a replacement for material: an NNUE output
+    // spike must never make a freely hanging rook/bishop/queen look harmless.
+    const int handcrafted=evaluateHandcrafted(b);
+    if(!nnueReady)return handcrafted;
+    const int neural=std::max(-150,std::min(150,evaluateNnue(b)));
+    return handcrafted+neural;
 }
 uint64_t hash(const Board& b){
     uint64_t h=1469598103934665603ULL;
