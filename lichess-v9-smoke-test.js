@@ -33,4 +33,21 @@ if (timed.elapsedMs > 1500) {
 }
 console.log(`PASS timed search: ${timed.uci}, completed depth ${timed.depth}/5, ${timed.elapsedMs.toFixed(1)}ms`);
 
+
+const openingTrap = new Chess();
+for (const san of ["Nf3", "d5", "Nc3"]) {
+  if (!openingTrap.move(san)) throw new Error("Could not build opening regression position: " + san);
+}
+const trapResult = await searchV9(openingTrap.fen(), 4);
+if (trapResult.uci === "c8h3") {
+  throw new Error("V9 regression: the bishop-hanging move ...Bh3 was selected.");
+}
+const trapLegal = openingTrap.moves({ verbose: true }).some(move =>
+  move.from === trapResult.from &&
+  move.to === trapResult.to &&
+  (move.promotion || null) === (trapResult.promotion || null)
+);
+if (!trapLegal) throw new Error("V9 returned an illegal move in the opening-trap regression.");
+console.log(`PASS opening tactical regression: rejected ...Bh3; selected ${trapResult.uci} at depth ${trapResult.depth}`);
+
 console.log("MARLIN V9 Lichess integration smoke test passed.");
