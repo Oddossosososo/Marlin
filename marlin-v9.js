@@ -138,8 +138,8 @@ export async function searchV9(fen, requestedDepth = 4, timeLimitMs = 0, onProgr
 
     const [, uci, scoreText, depthText, nodesText] = match;
     const reachedDepth = Number(depthText);
-    if (reachedDepth !== depth) {
-      throw new Error("MARLIN V9 reached depth " + reachedDepth + " instead of " + depth + ".");
+    if (reachedDepth < 1 || reachedDepth > depth) {
+      throw new Error("MARLIN V9 returned an invalid completed depth: " + reachedDepth + ".");
     }
 
     const elapsedMs = Math.max(1, (globalThis.performance?.now?.() ?? Date.now()) - startedAt);
