@@ -141,7 +141,7 @@ async function makeBotMove(game, gameId, clockState, sideToMove) {
         nps: 0,
         elapsedMs: 0
       }
-    : await searchV9(game.fen(), DEPTH, moveTimeBudgetMs(clockState, sideToMove));
+    : await searchV9(game.fen(), DEPTH, undefined, moveTimeBudgetMs(clockState, sideToMove));
 
   const legalMove = game.moves({ verbose: true }).find(move =>
     move.from === result.from &&
