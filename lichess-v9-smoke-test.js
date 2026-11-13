@@ -1,3 +1,4 @@
+// The C++ WASM now includes SEE capture ordering and expanded positional terms.
 import { Chess } from "chess.js";
 import { searchV9 } from "./marlin-v9.js";
 
