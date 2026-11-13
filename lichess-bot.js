@@ -4,7 +4,7 @@ import { initialiseV9OpeningBook, selectV9OpeningMove } from "./opening-book-v9.
 
 const TOKEN = process.env.LICHESS_TOKEN;
 const USERNAME = (process.env.LICHESS_USERNAME || "").toLowerCase();
-const DEPTH = Math.max(1, Math.min(12, Number(process.env.MARLIN_DEPTH) || 4));
+const DEPTH = Math.max(1, Math.min(12, Number(process.env.MARLIN_DEPTH) || 6));
 const API = "https://lichess.org/api";
 const headers = {
   Authorization: `Bearer ${TOKEN}`,
@@ -119,29 +119,34 @@ function moveTimeBudgetMs(state, color) {
   const remaining = Number(color === "w" ? state?.wtime : state?.btime);
   const increment = Number(color === "w" ? state?.winc : state?.binc) || 0;
   if (!Number.isFinite(remaining) || remaining <= 0) return 100;
-  // Keep blitz searches short, and scale down as the clock gets low.
-  const target = remaining / 100 + increment * 0.65;
-  return Math.max(20, Math.min(450, target, remaining * 0.08));
+  // Spend a meaningful fraction of the clock on tactical positions.
+  // The hard cap prevents a single move from consuming the whole rapid clock.
+  const target = remaining / 80 + increment * 0.8;
+  return Math.max(80, Math.min(1800, target, remaining * 0.04));
 }
 
 async function makeBotMove(game, gameId, clockState, sideToMove) {
   if (game.isGameOver()) return;
 
+  // Never let an opening-book entry bypass tactical search. A book move is
+  // advisory only: the searched move must independently agree with it.
   const bookMove = selectV9OpeningMove(game);
-  const result = bookMove
-    ? {
-        from: bookMove.from,
-        to: bookMove.to,
-        promotion: bookMove.promotion || null,
-        uci: bookMove.from + bookMove.to + (bookMove.promotion || ""),
-        source: bookMove.source,
-        bookGames: bookMove.bookGames || 0,
-        depth: 0,
-        nodes: 0,
-        nps: 0,
-        elapsedMs: 0
-      }
-    : await searchV9(game.fen(), DEPTH, undefined, moveTimeBudgetMs(clockState, sideToMove));
+  const searched = await searchV9(
+    game.fen(),
+    DEPTH,
+    undefined,
+    moveTimeBudgetMs(clockState, sideToMove)
+  );
+  const bookMatchesSearch = bookMove &&
+    bookMove.from === searched.from &&
+    bookMove.to === searched.to &&
+    (bookMove.promotion || null) === (searched.promotion || null);
+  const result = bookMatchesSearch
+    ? { ...searched, source: bookMove.source, bookGames: bookMove.bookGames || 0 }
+    : searched;
+  if (bookMove && !bookMatchesSearch) {
+    console.log(`Opening-book move ${bookMove.from + bookMove.to} rejected; search prefers ${searched.uci}.`);
+  }
 
   const legalMove = game.moves({ verbose: true }).find(move =>
     move.from === result.from &&
