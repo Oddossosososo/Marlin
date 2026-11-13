@@ -156,14 +156,57 @@ bool nnueReady=false;
 
 int evaluateHandcrafted(const Board& b){
     int score=0;
-    for(int s=0;s<128;s++){if(!valid(s)){s+=7;continue;}int p=b.sq[s];if(!p)continue;int t=absPiece(p),r=rankOf(s),f=fileOf(s);
-        int positional=0;int advance=p>0?r:7-r;int center=7-(std::abs(3-f)+std::abs(3-r));
+    int pawns[2][8]{};
+    int bishops[2]{};
+    bool rookOnFile[2][8]{};
+    for(int s=0;s<128;s++){
+        if(!valid(s)){s+=7;continue;}
+        const int p=b.sq[s];if(!p)continue;
+        const int colour=p>0?0:1,t=absPiece(p),r=rankOf(s),f=fileOf(s);
+        if(t==PAWN)++pawns[colour][f];
+        if(t==BISHOP)++bishops[colour];
+        if(t==ROOK)rookOnFile[colour][f]=true;
+        const int advance=p>0?r:7-r;
+        const int center=7-(std::abs(3-f)+std::abs(3-r));
+        int positional=0;
         if(t==PAWN)positional=advance*7+center*2;
         else if(t==KNIGHT)positional=center*9-((r==0||r==7||f==0||f==7)?18:0);
-        else if(t==BISHOP)positional=center*4;
+        else if(t==BISHOP)positional=center*5;
         else if(t==ROOK)positional=advance*2;
         else if(t==KING)positional=center*(b.halfmove>35?7:-2);
         score+=sign(p)*(VALUE[t]+positional);
+    }
+    // Reward bishop pair and useful rook files; penalize doubled/isolated
+    // pawns, while rewarding passed pawns according to their advancement.
+    for(int colour=0;colour<2;colour++){
+        const int side=colour==0?1:-1;
+        if(bishops[colour]>=2)score+=side*28;
+        for(int file=0;file<8;file++){
+            if(pawns[colour][file]>1)score-=side*14*(pawns[colour][file]-1);
+            if(pawns[colour][file]>0){
+                const bool ownNeighbour=(file>0&&pawns[colour][file-1])||
+                                        (file<7&&pawns[colour][file+1]);
+                if(!ownNeighbour)score-=side*12*pawns[colour][file];
+            }
+            if(rookOnFile[colour][file]){
+                const bool ownPawn=pawns[colour][file]>0;
+                const bool enemyPawn=pawns[1-colour][file]>0;
+                score+=side*(ownPawn?0:(enemyPawn?10:18));
+            }
+        }
+    }
+    for(int s=0;s<128;s++){
+        if(!valid(s)){s+=7;continue;}
+        const int p=b.sq[s];if(absPiece(p)!=PAWN)continue;
+        const int colour=p>0?0:1,side=p>0?1:-1,file=fileOf(s),rank=rankOf(s);
+        bool passed=true;
+        for(int enemyFile=std::max(0,file-1);enemyFile<=std::min(7,file+1);enemyFile++){
+            for(int rr=0;rr<8;rr++){
+                const int enemy=b.sq[rr*16+enemyFile];
+                if(enemy==-side*PAWN&&((side>0&&rr>rank)||(side<0&&rr<rank)))passed=false;
+            }
+        }
+        if(passed)score+=side*(12+advance*advance*2);
     }
     return b.side*score;
 }
@@ -233,6 +276,61 @@ bool sameMove(const Move& a,const Move& b){
 bool quietMove(const Board& b,const Move& m){
     return b.sq[m.to]==EMPTY&&!(m.flags&2)&&m.promo==0;
 }
+bool pieceAttacksSquare(const Board& b,int from,int target,int piece){
+    const int type=absPiece(piece),delta=target-from;
+    if(type==PAWN)return delta==(piece>0?15: -15)||delta==(piece>0?17:-17);
+    if(type==KNIGHT){for(int d:KNIGHT_OFF)if(from+d==target)return true;return false;}
+    if(type==KING){for(int d:KING_OFF)if(from+d==target)return true;return false;}
+    int step=0;
+    if(type==BISHOP||type==QUEEN){
+        if(std::abs(delta)%17==0)step=delta>0?17:-17;
+        else if(std::abs(delta)%15==0)step=delta>0?15:-15;
+    }
+    if(!step&&(type==ROOK||type==QUEEN)){
+        if(fileOf(from)==fileOf(target))step=delta>0?16:-16;
+        else if(rankOf(from)==rankOf(target))step=delta>0?1:-1;
+    }
+    if(!step)return false;
+    for(int sq=from+step;sq!=target;sq+=step)if(!valid(sq)||b.sq[sq])return false;
+    return true;
+}
+int leastValuableAttacker(const Board& b,int target,int side){
+    int best=-1,bestValue=INF;
+    for(int from=0;from<128;from++){
+        if(!valid(from)){from+=7;continue;}
+        const int p=b.sq[from];
+        if(!p||sign(p)!=side)continue;
+        const int value=VALUE[absPiece(p)];
+        if(value<bestValue&&pieceAttacksSquare(b,from,target,p)){best=from;bestValue=value;}
+    }
+    return best;
+}
+int staticExchange(const Board& b,const Move& m){
+    const int victimSquare=(m.flags&2)?m.to-(b.side>0?16:-16):m.to;
+    const int victim=absPiece(b.sq[victimSquare]);
+    if(!victim&&!m.promo)return 0;
+    Board position=b;
+    int gain[32]{};
+    const int moving=position.sq[m.from];
+    gain[0]=(victim?VALUE[victim]:0)+(m.promo?VALUE[m.promo]-VALUE[PAWN]:0);
+    position.sq[m.from]=0;position.sq[victimSquare]=0;
+    position.sq[m.to]=m.promo?b.side*m.promo:moving;
+    int side=-b.side,depth=0;
+    while(depth<30){
+        const int attacker=leastValuableAttacker(position,m.to,side);
+        if(attacker<0)break;
+        ++depth;
+        gain[depth]=VALUE[absPiece(position.sq[m.to])]-gain[depth-1];
+        const int piece=position.sq[attacker];
+        position.sq[attacker]=0;
+        position.sq[m.to]=piece;
+        side=-side;
+        if(std::max(-gain[depth-1],gain[depth])<0)break;
+    }
+    while(depth>0){gain[depth-1]=-std::max(-gain[depth-1],gain[depth]);--depth;}
+    return gain[0];
+}
+
 int historyScore(const Board& b,const Move& m){
     return history[b.side>0?0:1][m.from][m.to];
 }
@@ -254,7 +352,7 @@ void order(const Board& b,std::vector<Move>& moves,const Move& ttMove,int ply){
             if(ttMove.from>=0&&sameMove(m,ttMove))return 2000000;
             if(m.promo)return 1500000+VALUE[m.promo];
             const int victim=(m.flags&2)?PAWN:absPiece(b.sq[m.to]);
-            if(victim)return 1000000+VALUE[victim]*16-VALUE[absPiece(b.sq[m.from])];
+            if(victim)return 1000000+staticExchange(b,m)*32+VALUE[victim]*4-VALUE[absPiece(b.sq[m.from])];
             if(ply<MAX_PLY&&sameMove(m,killers[ply][0]))return 900000;
             if(ply<MAX_PLY&&sameMove(m,killers[ply][1]))return 899000;
             return historyScore(b,m);
@@ -308,9 +406,12 @@ int negamax(Board& b,int depth,int alpha,int beta,int ply,bool allowNull=true){
     for(const Move&m:moves){
         bool quiet=quietMove(b,m);if(quiet&&quietCount<int(quietTried.size()))quietTried[quietCount++]=m;
         Undo u=makeMove(b,m);int score;
+        const bool givesCheck=inCheck(b,b.side);
         if(index==0)score=-negamax(b,childDepth,-beta,-alpha,ply+1);
         else {
-            int reduction=(!check&&depth>=3&&index>=3&&quiet)?1+((depth>=6&&index>=8)?1:0):0;
+            // Never reduce a quiet move that gives check: forcing moves deserve
+            // a full search even when they appear late in move ordering.
+            int reduction=(!check&&!givesCheck&&depth>=3&&index>=3&&quiet)?1+((depth>=6&&index>=8)?1:0):0;
             score=-negamax(b,childDepth-reduction,-alpha-1,-alpha,ply+1);
             if(reduction>0&&score>alpha)score=-negamax(b,childDepth,-alpha-1,-alpha,ply+1);
             if(score>alpha&&score<beta)score=-negamax(b,childDepth,-beta,-alpha,ply+1);
