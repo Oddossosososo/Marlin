@@ -82,6 +82,19 @@ int main() {
     std::cout << "MARLIN hanging-bishop regression: "
               << tacticalResult << "\n";
 
+    // Regression: Qa4-b5 hangs the queen to ...cxb5. The root safety
+    // guard must reject the poisoned destination rather than trusting a
+    // shallow positional preference.
+    const char* poisonedQueenSquare =
+        "4k3/8/2p5/8/Q7/8/8/4K3 w - - 0 1";
+    char queenSafetyResult[256]{};
+    (void)marlin_cpp_search(poisonedQueenSquare, 4, queenSafetyResult,
+                            sizeof(queenSafetyResult));
+    CHECK(std::strncmp(queenSafetyResult, "bestmove ", 9) == 0);
+    CHECK(std::strstr(queenSafetyResult, "bestmove a4b5") == nullptr);
+    std::cout << "MARLIN poisoned-queen-square regression: "
+              << queenSafetyResult << "\\n";
+
     // Verify that V9 accepts trained NNUE weights and evaluates with the
     // same side-to-move-relative output scale as the Python trainer.
     std::vector<float> fc1W(768 * 128, 0.0f);
