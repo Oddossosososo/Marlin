@@ -6,6 +6,7 @@
 #include <cstring>
 #include <cctype>
 #include <limits>
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -207,6 +208,12 @@ uint64_t hash(const Board& b){
 struct Entry{uint64_t key=0;int depth=-1,score=0,flag=0;Move move{};};
 std::array<Entry,1<<18> tt;
 uint64_t nodes=0;
+std::chrono::steady_clock::time_point searchDeadline{};
+bool timedSearch=false;
+bool searchStopped=false;
+void checkSearchTime(){
+    if(timedSearch && !searchStopped && (nodes&1023ULL)==0 && std::chrono::steady_clock::now()>=searchDeadline)searchStopped=true;
+}
 int scoreFromTT(int s,int ply){if(s>MATE-MAX_PLY)return s-ply;if(s< -MATE+MAX_PLY)return s+ply;return s;}
 int scoreToTT(int s,int ply){if(s>MATE-MAX_PLY)return s+ply;if(s< -MATE+MAX_PLY)return s-ply;return s;}
 
@@ -250,7 +257,7 @@ void order(const Board& b,std::vector<Move>& moves,const Move& ttMove,int ply){
     });
 }
 int qsearch(Board& b,int alpha,int beta,int ply){
-    ++nodes;if(ply>=MAX_PLY)return evaluate(b);
+    ++nodes;checkSearchTime();if(searchStopped)return 0;if(ply>=MAX_PLY)return evaluate(b);
     bool check=inCheck(b,b.side);int stand=check?-INF:evaluate(b);
     std::vector<Move> moves;
     legalMoves(b,moves, !check);
@@ -263,11 +270,11 @@ int qsearch(Board& b,int alpha,int beta,int ply){
         return std::max(alpha,stand);
     }
     if(!check){if(stand>=beta)return beta;if(stand>alpha)alpha=stand;}
-    for(const Move&m:moves){Undo u=makeMove(b,m);int score=-qsearch(b,-beta,-alpha,ply+1);undoMove(b,m,u);if(score>=beta)return beta;if(score>alpha)alpha=score;}
+    for(const Move&m:moves){Undo u=makeMove(b,m);int score=-qsearch(b,-beta,-alpha,ply+1);undoMove(b,m,u);if(searchStopped)return 0;if(score>=beta)return beta;if(score>alpha)alpha=score;}
     return alpha;
 }
 int negamax(Board& b,int depth,int alpha,int beta,int ply,bool allowNull=true){
-    ++nodes;if(ply>=MAX_PLY)return evaluate(b);if(depth<=0)return qsearch(b,alpha,beta,ply);
+    ++nodes;checkSearchTime();if(searchStopped)return 0;if(ply>=MAX_PLY)return evaluate(b);if(depth<=0)return qsearch(b,alpha,beta,ply);
     uint64_t key=hash(b);Entry& e=tt[key&(tt.size()-1)];Move ttMove=e.key==key?e.move:Move{};
     int original=alpha;if(e.key==key&&e.depth>=depth){int s=scoreFromTT(e.score,ply);if(e.flag==0)return s;if(e.flag==1&&s>=beta)return s;if(e.flag==2&&s<=alpha)return s;}
     std::vector<Move> moves;legalMoves(b,moves,false);
@@ -283,6 +290,7 @@ int negamax(Board& b,int depth,int alpha,int beta,int ply,bool allowNull=true){
         int reduction=2+depth/4;
         int nullScore=-negamax(b,depth-1-reduction,-beta,-beta+1,ply+1,false);
         b.side=oldSide;b.ep=oldEp;b.halfmove=oldHalfmove;b.fullmove=oldFullmove;
+        if(searchStopped)return 0;
         if(nullScore>=beta)return beta;
     }
     order(b,moves,ttMove,ply);int best=-INF;Move bestMove=moves[0];int index=0;std::array<Move,64> quietTried{};int quietCount=0;
@@ -301,7 +309,7 @@ int negamax(Board& b,int depth,int alpha,int beta,int ply,bool allowNull=true){
             if(reduction>0&&score>alpha)score=-negamax(b,childDepth,-alpha-1,-alpha,ply+1);
             if(score>alpha&&score<beta)score=-negamax(b,childDepth,-beta,-alpha,ply+1);
         }
-        undoMove(b,m,u);++index;
+        undoMove(b,m,u);if(searchStopped)return 0;++index;
         if(score>best){best=score;bestMove=m;}if(score>alpha)alpha=score;
         if(alpha>=beta){
             if(quiet){
@@ -316,7 +324,7 @@ int negamax(Board& b,int depth,int alpha,int beta,int ply,bool allowNull=true){
     }
     // Prefer deeper entries when a different position collides in the direct-mapped table.
     // Same-position entries may still be refreshed by an equal/deeper search.
-    if(e.key!=key||depth>=e.depth){e.key=key;e.depth=depth;e.score=scoreToTT(best,ply);e.flag=best<=original?2:best>=beta?1:0;e.move=bestMove;}return best;
+    if(!searchStopped&&(e.key!=key||depth>=e.depth)){e.key=key;e.depth=depth;e.score=scoreToTT(best,ply);e.flag=best<=original?2:best>=beta?1:0;e.move=bestMove;}return best;
 }
 uint64_t perft(Board& b,int depth){
     if(depth==0)return 1;std::vector<Move> moves;legalMoves(b,moves,false);uint64_t total=0;
@@ -356,44 +364,45 @@ extern "C" int marlin_cpp_evaluate_fen(const char* fen){
 extern "C" uint64_t marlin_cpp_perft(const char* fen,int depth){
     Board b;if(!parseFen(fen,b)||depth<0||depth>8)return 0;return perft(b,depth);
 }
-extern "C" int marlin_cpp_search(const char* fen,int maxDepth,char* output,int outputSize){
-    if(!output||outputSize<8)return -1;Board b;if(!parseFen(fen,b)){std::strncpy(output,"bestmove 0000",outputSize-1);output[outputSize-1]=0;return -1;}
-    std::vector<Move> moves;legalMoves(b,moves,false);if(moves.empty()){std::strncpy(output,"bestmove 0000",outputSize-1);output[outputSize-1]=0;return 0;}
-    nodes=0;Move best=moves[0];int bestScore=0;int depthLimit=std::max(1,std::min(12,maxDepth));
-    // The root loop searches moves directly instead of going through
-    // negamax(), so explicitly extend a root position that begins in check.
+extern "C" int marlin_cpp_search_timed(const char* fen,int maxDepth,int timeLimitMs,char* output,int outputSize){
+    if(!output||outputSize<8)return -1;
+    Board b;
+    if(!parseFen(fen,b)){std::strncpy(output,"bestmove 0000",outputSize-1);output[outputSize-1]=0;return -1;}
+    std::vector<Move> moves;legalMoves(b,moves,false);
+    if(moves.empty()){std::strncpy(output,"bestmove 0000",outputSize-1);output[outputSize-1]=0;return 0;}
+    nodes=0;searchStopped=false;timedSearch=timeLimitMs>0;
+    if(timedSearch)searchDeadline=std::chrono::steady_clock::now()+std::chrono::milliseconds(timeLimitMs);
+    Move best=moves[0];int bestScore=0;int depthLimit=std::max(1,std::min(12,maxDepth));
     const int rootCheckExtension=inCheck(b,b.side)?1:0;
     int completedDepth=0;
-    for(int depth=1;depth<=depthLimit;depth++){
+    for(int depth=1;depth<=depthLimit&&!searchStopped;depth++){
         order(b,moves,best,0);
         const int rootChildDepth=depth-1+rootCheckExtension;
-        // Aspiration windows centre the next iteration on the previous score.
-        // A failed-low/high search is widened and repeated before committing.
         int window=depth>1?48:INF;
         int alpha=depth>1?std::max(-INF,bestScore-window):-INF;
         int beta=depth>1?std::min(INF,bestScore+window):INF;
         int iterationScore=-INF;Move iterationBest=best;
-        while(true){
+        while(!searchStopped){
             int localAlpha=alpha;
             iterationScore=-INF;iterationBest=best;
             for(size_t index=0;index<moves.size();index++){
+                if(searchStopped)break;
                 const Move& m=moves[index];
                 Undo u=makeMove(b,m);
                 int score;
-                if(index==0){
-                    score=-negamax(b,rootChildDepth,-beta,-localAlpha,1);
-                }else{
-                    // Principal-variation search: scout later moves with a
-                    // null window, then re-search only when they beat alpha.
+                if(index==0)score=-negamax(b,rootChildDepth,-beta,-localAlpha,1);
+                else{
                     score=-negamax(b,rootChildDepth,-localAlpha-1,-localAlpha,1);
-                    if(score>localAlpha&&score<beta)
+                    if(!searchStopped&&score>localAlpha&&score<beta)
                         score=-negamax(b,rootChildDepth,-beta,-localAlpha,1);
                 }
                 undoMove(b,m,u);
+                if(searchStopped)break;
                 if(score>iterationScore){iterationScore=score;iterationBest=m;}
                 if(score>localAlpha)localAlpha=score;
                 if(localAlpha>=beta)break;
             }
+            if(searchStopped)break;
             if(iterationScore<=alpha&&alpha>-INF){
                 window=std::min(INF,window*2);
                 alpha=std::max(-INF,bestScore-window);
@@ -408,9 +417,13 @@ extern "C" int marlin_cpp_search(const char* fen,int maxDepth,char* output,int o
             }
             break;
         }
-        // Only publish a root move after a complete aspiration/PVS iteration.
+        if(searchStopped)break;
         best=iterationBest;bestScore=iterationScore;completedDepth=depth;
     }
+    timedSearch=false;
     std::string result="bestmove "+uci(best)+" score "+std::to_string(bestScore)+" depth "+std::to_string(completedDepth)+" nodes "+std::to_string(nodes);
     std::strncpy(output,result.c_str(),outputSize-1);output[outputSize-1]=0;return bestScore;
+}
+extern "C" int marlin_cpp_search(const char* fen,int maxDepth,char* output,int outputSize){
+    return marlin_cpp_search_timed(fen,maxDepth,0,output,outputSize);
 }
