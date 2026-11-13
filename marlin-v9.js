@@ -105,7 +105,7 @@ export function v9NnueStatus() {
   return nnueStatus;
 }
 
-export async function searchV9(fen, requestedDepth = 4, onProgress = () => {}) {
+export async function searchV9(fen, requestedDepth = 4, timeLimitMs = 0, onProgress = () => {}) {
   if (typeof fen !== "string" || !fen.trim()) {
     throw new TypeError("A valid FEN string is required.");
   }
@@ -128,7 +128,7 @@ export async function searchV9(fen, requestedDepth = 4, onProgress = () => {}) {
   const startedAt = globalThis.performance?.now?.() ?? Date.now();
   try {
     wasm.stringToUTF8(fen, fenPtr, fenSize);
-    wasm._marlin_cpp_search(fenPtr, depth, outPtr, 512);
+    wasm._marlin_cpp_search_timed(fenPtr, depth, Math.max(0, Math.floor(Number(timeLimitMs) || 0)), outPtr, 512);
     const output = wasm.UTF8ToString(outPtr);
     const match = output.match(/^bestmove ([a-h][1-8][a-h][1-8][qrbn]?) score (-?\d+) depth (\d+) nodes (\d+)$/);
 
