@@ -86,7 +86,16 @@ int main() {
     CHECK(marlin_cpp_set_nnue_weights(fc1W.data(), fc1B.data(), fc2W.data(),
                                       fc2B.data(), outW.data(), &outB) == 1);
     CHECK(marlin_cpp_nnue_enabled() == 1);
-    CHECK(marlin_cpp_evaluate_fen(start) == 800);
+    const int blendedStartScore = marlin_cpp_evaluate_fen(start);
+    CHECK(blendedStartScore > 0 && blendedStartScore <= 220);
+
+    // A deliberately over-optimistic synthetic NNUE must not hide a whole
+    // extra bishop: the material-aware anchor keeps the side without the
+    // bishop objectively behind.
+    const char* downBishop =
+        "b3k3/8/8/8/8/8/8/4K3 w - - 0 1";
+    CHECK(marlin_cpp_evaluate_fen(downBishop) < 0);
+
     CHECK(marlin_cpp_set_nnue_weights(nullptr, fc1B.data(), fc2W.data(),
                                       fc2B.data(), outW.data(), &outB) == 0);
 
