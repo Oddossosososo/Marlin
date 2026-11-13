@@ -19,7 +19,7 @@ if (result.depth !== 2 || result.nodes <= 0) {
 
 console.log(`PASS starting position: ${result.uci}, depth ${result.depth}, ${result.nodes} nodes`);
 
-const timed = await searchV9(fen, 5, 150);
+const timed = await searchV9(fen, 5, undefined, 150);
 const timedLegal = game.moves({ verbose: true }).some(move =>
   move.from === timed.from &&
   move.to === timed.to &&
