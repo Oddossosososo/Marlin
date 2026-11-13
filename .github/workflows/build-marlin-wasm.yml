@@ -78,8 +78,8 @@ jobs:
               if (installed !== 1 || wasm._marlin_cpp_nnue_enabled() !== 1) {
                 throw new Error("V9 C++ WebAssembly did not accept NNUE weights.");
               }
-              if (wasm._marlin_cpp_evaluate_fen(fenPtr) !== 800) {
-                throw new Error("V9 C++ WebAssembly NNUE evaluation returned an unexpected score.");
+              if (wasm._marlin_cpp_evaluate_fen(fenPtr) !== 150) {
+                throw new Error("V9 C++ WebAssembly NNUE positional correction was not capped at 150 cp.");
               }
               console.log("V9 C++ WebAssembly NNUE installation and evaluation passed.");
             } finally {
