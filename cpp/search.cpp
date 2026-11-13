@@ -148,7 +148,7 @@ int rootHangingPiecePenalty(Board& afterMove,const Move& played){
 
     std::vector<Move> enemyCaptures;
     legalMoves(afterMove,enemyCaptures,true);
-    int bestCaptureOutcome=INF;
+    int worstCaptureOutcome=0;
     bool found=false;
 
     for(const Move& capture:enemyCaptures){
@@ -167,14 +167,14 @@ int rootHangingPiecePenalty(Board& afterMove,const Move& played){
         const int materialLoss=canRecapture
             ? std::max(0,VALUE[moved]-VALUE[attacker])
             : VALUE[moved];
-        bestCaptureOutcome=std::min(bestCaptureOutcome,materialLoss);
+        worstCaptureOutcome=std::max(worstCaptureOutcome,materialLoss);
     }
 
     if(!found)return 0;
     // A doubled penalty makes a clearly hanging major piece hard to overlook,
     // while allowing a genuine exchange sacrifice when the search sees
     // sufficient compensation.
-    return bestCaptureOutcome*2;
+    return worstCaptureOutcome*2;
 }
 
 bool hasNullMoveMaterial(const Board& b){
