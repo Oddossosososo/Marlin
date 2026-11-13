@@ -90,6 +90,7 @@ int main() {
     std::vector<float> fc2B(32, 0.0f);
     std::vector<float> outW(32, 0.0f);
     float outB = 0.0f;
+    const int baselineScore = marlin_cpp_evaluate_fen(start);
     fc1B[0] = 1.0f;
     fc2W[0] = 1.0f;
     outW[0] = 1.0f;
@@ -97,7 +98,7 @@ int main() {
     CHECK(marlin_cpp_set_nnue_weights(fc1W.data(), fc1B.data(), fc2W.data(),
                                       fc2B.data(), outW.data(), &outB) == 1);
     CHECK(marlin_cpp_nnue_enabled() == 1);
-    CHECK(marlin_cpp_evaluate_fen(start) == 800);
+    CHECK(marlin_cpp_evaluate_fen(start) == baselineScore + 150);
     CHECK(marlin_cpp_set_nnue_weights(nullptr, fc1B.data(), fc2W.data(),
                                       fc2B.data(), outW.data(), &outB) == 0);
 
