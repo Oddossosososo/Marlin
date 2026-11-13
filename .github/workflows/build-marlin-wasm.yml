@@ -78,10 +78,22 @@ jobs:
               if (installed !== 1 || wasm._marlin_cpp_nnue_enabled() !== 1) {
                 throw new Error("V9 C++ WebAssembly did not accept NNUE weights.");
               }
-              if (wasm._marlin_cpp_evaluate_fen(fenPtr) !== 800) {
-                throw new Error("V9 C++ WebAssembly NNUE evaluation returned an unexpected score.");
+              const blendedStartScore = wasm._marlin_cpp_evaluate_fen(fenPtr);
+              if (blendedStartScore <= 0 || blendedStartScore > 220) {
+                throw new Error("V9 NNUE was not safely anchored to the handcrafted evaluation: " + blendedStartScore);
               }
-              console.log("V9 C++ WebAssembly NNUE installation and evaluation passed.");
+              const downBishopFen = "b3k3/8/8/8/8/8/8/4K3 w - - 0 1";
+              const downBishopSize = new TextEncoder().encode(downBishopFen).length + 1;
+              const downBishopPtr = wasm._malloc(downBishopSize);
+              try {
+                wasm.stringToUTF8(downBishopFen, downBishopPtr, downBishopSize);
+                if (wasm._marlin_cpp_evaluate_fen(downBishopPtr) >= 0) {
+                  throw new Error("V9 NNUE incorrectly evaluated a position with a missing bishop as equal or better.");
+                }
+              } finally {
+                wasm._free(downBishopPtr);
+              }
+              console.log("V9 C++ WebAssembly NNUE material-anchor regression passed.");
             } finally {
               ptrs.forEach(ptr => { if (ptr) wasm._free(ptr); });
             }
@@ -92,6 +104,10 @@ jobs:
           NODE
       - name: Commit generated WebAssembly runtime
         run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Skipping generated runtime commit on pull requests; the main-branch build publishes it after merge."
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add marlin-wasm.js marlin-wasm.wasm
