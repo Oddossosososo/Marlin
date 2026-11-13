@@ -138,6 +138,45 @@ void legalMoves(Board& b,std::vector<Move>& out,bool capturesOnly=false){
     std::vector<Move> candidates;pseudoMoves(b,candidates,capturesOnly);out.clear();out.reserve(candidates.size());
     for(const Move& m:candidates){Undo u=makeMove(b,m);bool legal=!inCheck(b,-b.side);undoMove(b,m,u);if(legal)out.push_back(m);}
 }
+// Root safety guard: detect a moved piece that the opponent can legally
+// capture immediately and estimate whether the capturing piece can be taken
+// back. This is a final blunder check on top of the normal search, not a
+// replacement for search or a ban on sound sacrifices.
+int rootHangingPiecePenalty(Board& afterMove,const Move& played){
+    const int moved=absPiece(afterMove.sq[played.to]);
+    if(moved==EMPTY||moved==KING)return 0;
+
+    std::vector<Move> enemyCaptures;
+    legalMoves(afterMove,enemyCaptures,true);
+    int bestCaptureOutcome=INF;
+    bool found=false;
+
+    for(const Move& capture:enemyCaptures){
+        if(capture.to!=played.to)continue;
+        found=true;
+        const int attacker=absPiece(afterMove.sq[capture.from]);
+        Undo captureUndo=makeMove(afterMove,capture);
+        std::vector<Move> recaptures;
+        legalMoves(afterMove,recaptures,true);
+        bool canRecapture=false;
+        for(const Move& recapture:recaptures){
+            if(recapture.to==capture.from){canRecapture=true;break;}
+        }
+        undoMove(afterMove,capture,captureUndo);
+
+        const int materialLoss=canRecapture
+            ? std::max(0,VALUE[moved]-VALUE[attacker])
+            : VALUE[moved];
+        bestCaptureOutcome=std::min(bestCaptureOutcome,materialLoss);
+    }
+
+    if(!found)return 0;
+    // A doubled penalty makes a clearly hanging major piece hard to overlook,
+    // while allowing a genuine exchange sacrifice when the search sees
+    // sufficient compensation.
+    return bestCaptureOutcome*2;
+}
+
 bool hasNullMoveMaterial(const Board& b){
     int material=0;
     for(int s=0;s<128;s++){if(!valid(s)){s+=7;continue;}int p=b.sq[s];if(p&&sign(p)==b.side&&absPiece(p)!=PAWN&&absPiece(p)!=KING){material+=VALUE[absPiece(p)];if(material>=VALUE[ROOK])return true;}}
@@ -405,6 +444,10 @@ extern "C" int marlin_cpp_search_timed(const char* fen,int maxDepth,int timeLimi
                     if(!searchStopped&&score>localAlpha&&score<beta)
                         score=-negamax(b,rootChildDepth,-beta,-localAlpha,1);
                 }
+                // Final root-level safety check: don't overlook a simple
+                // legal capture of the piece just moved, especially on
+                // check-evasion moves where a blocking square may be poisoned.
+                score-=rootHangingPiecePenalty(b,m);
                 undoMove(b,m,u);
                 if(searchStopped)break;
                 if(score>iterationScore){iterationScore=score;iterationBest=m;}
