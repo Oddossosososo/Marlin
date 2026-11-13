@@ -105,7 +105,7 @@ export function v9NnueStatus() {
   return nnueStatus;
 }
 
-export async function searchV9(fen, requestedDepth = 4, timeLimitMs = 0, onProgress = () => {}) {
+export async function searchV9(fen, requestedDepth = 4, onProgress = () => {}, timeLimitMs = 0) {
   if (typeof fen !== "string" || !fen.trim()) {
     throw new TypeError("A valid FEN string is required.");
   }
