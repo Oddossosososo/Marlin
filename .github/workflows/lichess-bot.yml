@@ -56,5 +56,5 @@ jobs:
         env:
           LICHESS_TOKEN: ${{ secrets.LICHESS1_TOKEN || secrets.LICHESS_TOKEN }}
           LICHESS_USERNAME: ${{ vars.LICHESS_USERNAME }}
-          MARLIN_DEPTH: "${{ vars.MARLIN_DEPTH || '5' }}"
+          MARLIN_DEPTH: "${{ vars.MARLIN_DEPTH || '6' }}"
         run: npm run lichess-bot
