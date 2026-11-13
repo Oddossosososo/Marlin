@@ -118,13 +118,13 @@ function parsePosition(initialFen, uciMoves) {
 function moveTimeBudgetMs(state, color) {
   const remaining = Number(color === "w" ? state?.wtime : state?.btime);
   const increment = Number(color === "w" ? state?.winc : state?.binc) || 0;
-  if (!Number.isFinite(remaining) || remaining <= 0) return 300;
-  // 3+0 target: roughly 0.45s per move, with a little extra from increment.
+  if (!Number.isFinite(remaining) || remaining <= 0) return 100;
+  // Keep blitz searches short, and scale down as the clock gets low.
   const target = remaining / 100 + increment * 0.65;
-  return Math.max(120, Math.min(450, target, remaining * 0.10));
+  return Math.max(20, Math.min(450, target, remaining * 0.08));
 }
 
-async function makeBotMove(game, gameId, clockState) {
+async function makeBotMove(game, gameId, clockState, sideToMove) {
   if (game.isGameOver()) return;
 
   const bookMove = selectV9OpeningMove(game);
@@ -141,7 +141,7 @@ async function makeBotMove(game, gameId, clockState) {
         nps: 0,
         elapsedMs: 0
       }
-    : await searchV9(game.fen(), DEPTH, moveTimeBudgetMs(clockState, botColor));
+    : await searchV9(game.fen(), DEPTH, moveTimeBudgetMs(clockState, sideToMove));
 
   const legalMove = game.moves({ verbose: true }).find(move =>
     move.from === result.from &&
@@ -258,7 +258,7 @@ async function handleGame(gameId, botId) {
 
     lastMoves = movesText;
     try {
-      await makeBotMove(game, gameId, state);
+      await makeBotMove(game, gameId, state, botColor);
     } catch (error) {
       // Force a fresh gameFull snapshot before retrying a rejected or stale move.
       lastMoves = null;
