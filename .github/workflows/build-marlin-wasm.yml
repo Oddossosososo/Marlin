@@ -66,6 +66,7 @@ jobs:
             const fc2B = new Float32Array(32);
             const outW = new Float32Array(32);
             const outB = new Float32Array([0]);
+            const baselineScore = wasm._marlin_cpp_evaluate_fen(fenPtr);
             fc1B[0] = 1;
             fc2W[0] = 1;
             outW[0] = 1;
@@ -78,7 +79,7 @@ jobs:
               if (installed !== 1 || wasm._marlin_cpp_nnue_enabled() !== 1) {
                 throw new Error("V9 C++ WebAssembly did not accept NNUE weights.");
               }
-              if (wasm._marlin_cpp_evaluate_fen(fenPtr) !== 150) {
+              if (wasm._marlin_cpp_evaluate_fen(fenPtr) !== baselineScore + 150) {
                 throw new Error("V9 C++ WebAssembly NNUE positional correction was not capped at 150 cp.");
               }
               console.log("V9 C++ WebAssembly NNUE installation and evaluation passed.");
