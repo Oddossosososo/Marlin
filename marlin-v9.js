@@ -138,7 +138,7 @@ export async function searchV9(fen, requestedDepth = 4, timeLimitMs = 0, onProgr
 
     const [, uci, scoreText, depthText, nodesText] = match;
     const reachedDepth = Number(depthText);
-    if (reachedDepth < 1 || reachedDepth > depth) {
+    if (!Number.isInteger(reachedDepth) || reachedDepth < 0 || reachedDepth > depth) {
       throw new Error("MARLIN V9 returned an invalid completed depth: " + reachedDepth + ".");
     }
 
@@ -151,6 +151,8 @@ export async function searchV9(fen, requestedDepth = 4, timeLimitMs = 0, onProgr
       uci,
       score: Number(scoreText),
       depth: reachedDepth,
+      requestedDepth: depth,
+      budgetLimited: reachedDepth < depth,
       nodes,
       elapsedMs,
       nps: Math.round(nodes * 1000 / elapsedMs),
