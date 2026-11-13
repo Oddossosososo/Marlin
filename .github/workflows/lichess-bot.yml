@@ -49,6 +49,7 @@ jobs:
           node --check lichess-bot.js
           node --check lichess-v9-smoke-test.js
 
+      # Regression tests run against the freshly rebuilt, material-safe WASM.
       - name: Test V9 WebAssembly search and legal moves
         run: npm run test:lichess-v9
 
