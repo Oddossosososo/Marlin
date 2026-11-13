@@ -36,7 +36,7 @@ jobs:
             -s ENVIRONMENT=web,worker,node \
             -s ALLOW_MEMORY_GROWTH=1 \
             -s FILESYSTEM=0 \
-            -s EXPORTED_FUNCTIONS='["_marlin_cpp_search","_marlin_cpp_perft","_marlin_cpp_set_nnue_weights","_marlin_cpp_nnue_enabled","_marlin_cpp_evaluate_fen","_malloc","_free"]' \
+            -s EXPORTED_FUNCTIONS='["_marlin_cpp_search","_marlin_cpp_search_timed","_marlin_cpp_perft","_marlin_cpp_set_nnue_weights","_marlin_cpp_nnue_enabled","_marlin_cpp_evaluate_fen","_malloc","_free"]' \
             -s EXPORTED_RUNTIME_METHODS='["UTF8ToString","stringToUTF8","HEAPF32"]' \
             -o marlin-wasm.js
       - name: Smoke-test the compiled WebAssembly search
@@ -50,7 +50,7 @@ jobs:
           const outPtr = wasm._malloc(512);
           try {
             wasm.stringToUTF8(fen, fenPtr, fenSize);
-            wasm._marlin_cpp_search(fenPtr, 3, outPtr, 512);
+            wasm._marlin_cpp_search_timed(fenPtr, 3, 150, outPtr, 512);
             const result = wasm.UTF8ToString(outPtr);
             if (!/^bestmove [a-h][1-8][a-h][1-8][qrbn]? score /.test(result)) {
               throw new Error("Unexpected C++ WASM response: " + result);
