@@ -115,7 +115,16 @@ function parsePosition(initialFen, uciMoves) {
   return game;
 }
 
-function moveTimeBudgetMs(state, color) {\n  const remaining = Number(color === "w" ? state?.wtime : state?.btime);\n  const increment = Number(color === "w" ? state?.winc : state?.binc) || 0;\n  if (!Number.isFinite(remaining) || remaining <= 0) return 300;\n  // 3+0 target: roughly 0.45s per move, with a little extra from increment.\n  const target = remaining / 100 + increment * 0.65;\n  return Math.max(120, Math.min(450, target, remaining * 0.10));\n}\n\nasync function makeBotMove(game, gameId, clockState) {
+function moveTimeBudgetMs(state, color) {
+  const remaining = Number(color === "w" ? state?.wtime : state?.btime);
+  const increment = Number(color === "w" ? state?.winc : state?.binc) || 0;
+  if (!Number.isFinite(remaining) || remaining <= 0) return 300;
+  // 3+0 target: roughly 0.45s per move, with a little extra from increment.
+  const target = remaining / 100 + increment * 0.65;
+  return Math.max(120, Math.min(450, target, remaining * 0.10));
+}
+
+async function makeBotMove(game, gameId, clockState) {
   if (game.isGameOver()) return;
 
   const bookMove = selectV9OpeningMove(game);
