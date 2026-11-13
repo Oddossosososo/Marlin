@@ -51,4 +51,21 @@ const trapLegal = openingTrap.moves({ verbose: true }).some(move =>
 if (!trapLegal) throw new Error("V9 returned an illegal move in the opening-trap regression.");
 console.log(`PASS opening tactical regression: rejected ...Bh3; selected ${trapResult.uci} at depth ${trapResult.depth}`);
 
+// Root safety regression: a queen move to b5 would allow ...cxb5.
+const poisonedQueenSquare = "4k3/8/2p5/8/Q7/8/8/4K3 w - - 0 1";
+const queenSafetyGame = new Chess(poisonedQueenSquare);
+const queenSafety = await searchV9(poisonedQueenSquare, 4);
+const queenSafetyLegal = queenSafetyGame.moves({ verbose: true }).some(move =>
+  move.from === queenSafety.from &&
+  move.to === queenSafety.to &&
+  (move.promotion || null) === (queenSafety.promotion || null)
+);
+if (!queenSafetyLegal) {
+  throw new Error("V9 returned an illegal move in the poisoned-queen-square regression.");
+}
+if (queenSafety.uci === "a4b5") {
+  throw new Error("V9 regression: selected Qa4-b5 and hung the queen to ...cxb5.");
+}
+console.log(`PASS poisoned queen-square regression: rejected Qa4-b5; selected ${queenSafety.uci}`);
+
 console.log("MARLIN V9 Lichess integration smoke test passed.");
