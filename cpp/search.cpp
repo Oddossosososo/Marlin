@@ -155,7 +155,13 @@ float nnueOutB=0.0f;
 bool nnueReady=false;
 
 int evaluateHandcrafted(const Board& b){
-    int score=0;
+    int score=0,nonPawnMaterial=0;
+    for(int s=0;s<128;s++){
+        if(!valid(s)){s+=7;continue;}
+        int piece=absPiece(b.sq[s]);
+        if(piece>PAWN&&piece<KING)nonPawnMaterial+=VALUE[piece];
+    }
+    const bool endgame=nonPawnMaterial<=2600;
     for(int s=0;s<128;s++){
         if(!valid(s)){s+=7;continue;}
         int p=b.sq[s];if(!p)continue;
@@ -169,11 +175,11 @@ int evaluateHandcrafted(const Board& b){
             // promotion. Only enemy pawns on the same/adjacent files and
             // ahead of this pawn can stop it from being passed.
             bool passed=true;
-            for(int q=0;q<128;q++){
-                if(!valid(q)){q+=7;continue;}
-                if(b.sq[q]!=-colour*PAWN)continue;
-                int qr=rankOf(q),qf=fileOf(q);
-                if(std::abs(qf-f)<=1 && (colour>0?qr>r:qr<r)){passed=false;break;}
+            const int direction=colour>0?1:-1;
+            for(int qr=r+direction;qr>=0&&qr<8&&passed;qr+=direction){
+                for(int qf=std::max(0,f-1);qf<=std::min(7,f+1);qf++){
+                    if(b.sq[qr*16+qf]==-colour*PAWN){passed=false;break;}
+                }
             }
             if(passed){
                 positional+=14+advance*advance*2;
@@ -184,11 +190,6 @@ int evaluateHandcrafted(const Board& b){
         else if(t==BISHOP)positional=center*4;
         else if(t==ROOK)positional=advance*2;
         else if(t==KING){
-            const bool endgame=([&](){
-                int material=0;
-                for(int q=0;q<128;q++){if(!valid(q)){q+=7;continue;}int piece=absPiece(b.sq[q]);if(piece>PAWN&&piece<KING)material+=VALUE[piece];}
-                return material<=2600;
-            })();
             if(endgame)positional=center*7;
             else{
                 positional=center*(-2);
