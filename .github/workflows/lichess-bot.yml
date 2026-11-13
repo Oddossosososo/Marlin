@@ -7,7 +7,9 @@ on:
     paths:
       - "nnue/marlin-v9.nnue.json"
       - "nnue/marlin-v9-opening-book.json"
-      - ".github/workflows/lichess-bot.yml"\n      - "marlin-wasm.js"\n      - "marlin-wasm.wasm"
+      - ".github/workflows/lichess-bot.yml"
+      - "marlin-wasm.js"
+      - "marlin-wasm.wasm"
   schedule:
     # Restart shortly after the 350-minute GitHub Actions job timeout.
     - cron: "0 */6 * * *"
