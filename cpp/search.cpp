@@ -206,6 +206,7 @@ int evaluateHandcrafted(const Board& b){
                 if(enemy==-side*PAWN&&((side>0&&rr>rank)||(side<0&&rr<rank)))passed=false;
             }
         }
+        const int advance=side>0?rank:7-rank;
         if(passed)score+=side*(12+advance*advance*2);
     }
     return b.side*score;
