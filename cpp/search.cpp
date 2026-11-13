@@ -156,14 +156,55 @@ bool nnueReady=false;
 
 int evaluateHandcrafted(const Board& b){
     int score=0;
-    for(int s=0;s<128;s++){if(!valid(s)){s+=7;continue;}int p=b.sq[s];if(!p)continue;int t=absPiece(p),r=rankOf(s),f=fileOf(s);
-        int positional=0;int advance=p>0?r:7-r;int center=7-(std::abs(3-f)+std::abs(3-r));
-        if(t==PAWN)positional=advance*7+center*2;
-        else if(t==KNIGHT)positional=center*9-((r==0||r==7||f==0||f==7)?18:0);
+    for(int s=0;s<128;s++){
+        if(!valid(s)){s+=7;continue;}
+        int p=b.sq[s];if(!p)continue;
+        int t=absPiece(p),r=rankOf(s),f=fileOf(s),colour=sign(p);
+        int positional=0;
+        int advance=colour>0?r:7-r;
+        int center=7-(std::abs(3-f)+std::abs(3-r));
+        if(t==PAWN){
+            positional=advance*7+center*2;
+            // Passed pawns become increasingly dangerous as they approach
+            // promotion. Only enemy pawns on the same/adjacent files and
+            // ahead of this pawn can stop it from being passed.
+            bool passed=true;
+            for(int q=0;q<128;q++){
+                if(!valid(q)){q+=7;continue;}
+                if(b.sq[q]!=-colour*PAWN)continue;
+                int qr=rankOf(q),qf=fileOf(q);
+                if(std::abs(qf-f)<=1 && (colour>0?qr>r:qr<r)){passed=false;break;}
+            }
+            if(passed){
+                positional+=14+advance*advance*2;
+                int next=r+(colour>0?1:-1);
+                if(valid(next*16+f)&&b.sq[next*16+f]==EMPTY)positional+=8;
+            }
+        }else if(t==KNIGHT)positional=center*9-((r==0||r==7||f==0||f==7)?18:0);
         else if(t==BISHOP)positional=center*4;
         else if(t==ROOK)positional=advance*2;
-        else if(t==KING)positional=center*(b.halfmove>35?7:-2);
-        score+=sign(p)*(VALUE[t]+positional);
+        else if(t==KING){
+            const bool endgame=([&](){
+                int material=0;
+                for(int q=0;q<128;q++){if(!valid(q)){q+=7;continue;}int piece=absPiece(b.sq[q]);if(piece>PAWN&&piece<KING)material+=VALUE[piece];}
+                return material<=2600;
+            })();
+            if(endgame)positional=center*7;
+            else{
+                positional=center*(-2);
+                // Reward an intact pawn shelter and penalise a king exposed
+                // to direct attacks. Keep this deliberately modest so it
+                // cannot outweigh concrete material.
+                int shieldRank=r+(colour>0?1:-1);
+                for(int sf=std::max(0,f-1);sf<=std::min(7,f+1);sf++){
+                    int shield=shieldRank*16+sf;
+                    if(valid(shield)&&b.sq[shield]==colour*PAWN)positional+=10;
+                    else positional-=6;
+                }
+                if(attacked(b,s,-colour))positional-=45;
+            }
+        }
+        score+=colour*(VALUE[t]+positional);
     }
     return b.side*score;
 }
@@ -198,7 +239,15 @@ int evaluateNnue(const Board& b){
 }
 
 int evaluate(const Board& b){
-    return nnueReady?evaluateNnue(b):evaluateHandcrafted(b);
+    const int handcrafted=evaluateHandcrafted(b);
+    if(!nnueReady)return handcrafted;
+    // NNUE is useful for positional judgement, but a small training set can
+    // occasionally misprice a hanging piece or an advancing passer. Anchor
+    // its output to the material-aware evaluator so a neural outlier cannot
+    // make a full-piece loss look favourable.
+    const int neural=evaluateNnue(b);
+    const int bounded=std::max(handcrafted-220,std::min(handcrafted+220,neural));
+    return (bounded*3+handcrafted*2)/5;
 }
 uint64_t hash(const Board& b){
     uint64_t h=1469598103934665603ULL;
