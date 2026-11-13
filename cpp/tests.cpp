@@ -71,6 +71,17 @@ int main() {
     std::cout << "MARLIN French check-evasion regression: "
               << checkResult << "\n";
 
+    // Regression from the ...Bh3?? opening blunder: the bishop on c8
+    // must not be sent to h3 where White's g-pawn can simply take it.
+    const char* hangingBishop =
+        "rnbqkbnr/ppp1pppp/8/3p4/8/2N2N2/PPPPPPPP/R1BQKB1R b KQkq - 2 2";
+    char tacticalResult[256]{};
+    (void)marlin_cpp_search(hangingBishop, 4, tacticalResult, sizeof(tacticalResult));
+    CHECK(std::strncmp(tacticalResult, "bestmove ", 9) == 0);
+    CHECK(std::strstr(tacticalResult, "bestmove c8h3") == nullptr);
+    std::cout << "MARLIN hanging-bishop regression: "
+              << tacticalResult << "\n";
+
     // Verify that V9 accepts trained NNUE weights and evaluates with the
     // same side-to-move-relative output scale as the Python trainer.
     std::vector<float> fc1W(768 * 128, 0.0f);
