@@ -9,6 +9,7 @@ std::uint64_t marlin_white_pawn_attacks(std::uint64_t pawns);
 std::uint64_t marlin_black_pawn_attacks(std::uint64_t pawns);
 std::uint64_t marlin_cpp_perft(const char* fen, int depth);
 int marlin_cpp_search(const char* fen, int max_depth, char* output, int output_size);
+int marlin_cpp_search_timed(const char* fen, int max_depth, int time_limit_ms, char* output, int output_size);
 int marlin_cpp_set_nnue_weights(const float* fc1_w,const float* fc1_b,const float* fc2_w,const float* fc2_b,const float* out_w,const float* out_b);
 int marlin_cpp_nnue_enabled();
 int marlin_cpp_evaluate_fen(const char* fen);
