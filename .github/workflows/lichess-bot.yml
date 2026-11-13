@@ -12,6 +12,8 @@ on:
       - "marlin-wasm.wasm"
       - "marlin-v9.js"
       - "lichess-bot.js"
+      - "marlin-v9.js"
+      - "lichess-bot.js"
       - "lichess-v9-smoke-test.js"
   schedule:
     # Restart shortly after the 350-minute GitHub Actions job timeout.
