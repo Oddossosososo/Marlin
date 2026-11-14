@@ -1,4 +1,4 @@
-name: MARLIN JavaScript checks
+name: MARLIN JavaScript checks and adaptive clock tests
 
 on:
   push:
