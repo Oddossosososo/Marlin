@@ -1,6 +1,7 @@
 import { Chess } from "chess.js";
 import { searchV9, initialiseV9, v9NnueStatus } from "./marlin-v9.js";
 import { initialiseV9OpeningBook, selectV9OpeningMove } from "./opening-book-v9.js";
+import { moveTimeBudgetMs } from "./move-time-manager.js";
 
 const TOKEN = process.env.LICHESS_TOKEN;
 const USERNAME = (process.env.LICHESS_USERNAME || "").toLowerCase();
@@ -113,16 +114,6 @@ function parsePosition(initialFen, uciMoves) {
     if (!move) throw new Error("Lichess supplied an illegal move: " + uci);
   }
   return game;
-}
-
-function moveTimeBudgetMs(state, color) {
-  const remaining = Number(color === "w" ? state?.wtime : state?.btime);
-  const increment = Number(color === "w" ? state?.winc : state?.binc) || 0;
-  if (!Number.isFinite(remaining) || remaining <= 0) return 100;
-  // Spend a meaningful fraction of the clock on tactical positions.
-  // The hard cap prevents a single move from consuming the whole rapid clock.
-  const target = remaining / 80 + increment * 0.8;
-  return Math.max(80, Math.min(1800, target, remaining * 0.04));
 }
 
 async function makeBotMove(game, gameId, clockState, sideToMove) {
