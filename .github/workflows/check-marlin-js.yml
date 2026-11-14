@@ -38,13 +38,16 @@ jobs:
             opening-book-v9.js \
             opening-book-v9-smoke-test.js \
             lichess-bot.js \
+            move-time-manager.js \
             lichess-v9-smoke-test.js \
+            training/test_move_time_manager.mjs \
             training/smoke-v8.mjs \
             app.js
           do
             echo "Checking $file"
             node --input-type=module --check < "$file"
           done
+          node training/test_move_time_manager.mjs
           node training/smoke-v8.mjs
           node lichess-v9-smoke-test.js
           node opening-book-v9-smoke-test.js
